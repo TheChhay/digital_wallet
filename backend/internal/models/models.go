@@ -50,7 +50,8 @@ type User struct {
 	BaseModel
 	Phone           string     `gorm:"type:varchar(32);uniqueIndex;not null" json:"phone"`
 	PasswordHash    string     `gorm:"type:text;not null" json:"-"`
-	FullName        string     `gorm:"type:varchar(160)" json:"full_name"`
+	FirstName       string     `gorm:"type:varchar(80);not null" json:"first_name"`
+	LastName        string     `gorm:"type:varchar(80);not null" json:"last_name"`
 	ProfileImageURL string     `gorm:"type:text" json:"profile_image_url"`
 	Role            Role       `gorm:"type:varchar(20);not null;default:'user';index" json:"role"`
 	Status          UserStatus `gorm:"type:varchar(20);not null;default:'active';index" json:"status"`

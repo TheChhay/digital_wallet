@@ -12,6 +12,7 @@ import (
 	"digital_wallet_api/internal/models"
 	"digital_wallet_api/internal/repositories"
 	"digital_wallet_api/internal/utils"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -42,7 +43,8 @@ func (s *Service) Register(req dto.RegisterRequest) (*dto.AuthResponse, error) {
 	user := &models.User{
 		Phone:        req.Phone,
 		PasswordHash: passwordHash,
-		FullName:     req.FullName,
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
 		Role:         models.RoleUser,
 		Status:       models.UserActive,
 	}
@@ -371,8 +373,14 @@ func (s *Service) issueTokens(user *models.User) (*dto.AuthResponse, error) {
 
 func mapUser(user *models.User) dto.UserResponse {
 	return dto.UserResponse{
-		ID: user.ID, Phone: user.Phone, FullName: user.FullName, Role: string(user.Role),
-		Status: string(user.Status), ProfileImageURL: user.ProfileImageURL, CreatedAt: user.CreatedAt,
+		ID:              user.ID,
+		Phone:           user.Phone,
+		FirstName:       user.FirstName,
+		LastName:        user.LastName,
+		Role:            string(user.Role),
+		Status:          string(user.Status),
+		ProfileImageURL: user.ProfileImageURL,
+		CreatedAt:       user.CreatedAt,
 	}
 }
 

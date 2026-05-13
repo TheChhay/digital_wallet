@@ -1,11 +1,12 @@
 -- +goose Up
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     phone VARCHAR(32) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    full_name VARCHAR(160),
+    first_name VARCHAR(80) NOT NULL,
+    last_name VARCHAR(80) NOT NULL,
     profile_image_url TEXT,
     role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'frozen')),
@@ -13,7 +14,28 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE wallets (
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(80) NOT NULL DEFAULT '';
+
+-- +goose StatementBegin
+DO $do$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'users'
+          AND column_name = 'full_name'
+    ) THEN
+        UPDATE users
+        SET first_name = trim(split_part(full_name, ' ', 1)),
+            last_name = trim(substring(full_name FROM length(split_part(full_name, ' ', 1)) + 2))
+        WHERE first_name = '' OR last_name = '';
+        ALTER TABLE users DROP COLUMN IF EXISTS full_name;
+    END IF;
+END $do$;
+-- +goose StatementEnd
+
+CREATE TABLE IF NOT EXISTS wallets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     balance_cents BIGINT NOT NULL DEFAULT 0 CHECK (balance_cents >= 0),
@@ -21,7 +43,7 @@ CREATE TABLE wallets (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     reference VARCHAR(64) NOT NULL UNIQUE,
     idempotency_key VARCHAR(120),
@@ -37,14 +59,14 @@ CREATE TABLE transactions (
     CHECK (sender_id IS NOT NULL OR receiver_id IS NOT NULL)
 );
 
-CREATE UNIQUE INDEX idx_transactions_sender_idempotency
+CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_sender_idempotency
     ON transactions(sender_id, idempotency_key)
     WHERE idempotency_key IS NOT NULL;
-CREATE INDEX idx_transactions_sender_created ON transactions(sender_id, created_at DESC);
-CREATE INDEX idx_transactions_receiver_created ON transactions(receiver_id, created_at DESC);
-CREATE INDEX idx_transactions_type_status ON transactions(type, status);
+CREATE INDEX IF NOT EXISTS idx_transactions_sender_created ON transactions(sender_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_receiver_created ON transactions(receiver_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_type_status ON transactions(type, status);
 
-CREATE TABLE kyc_verifications (
+CREATE TABLE IF NOT EXISTS kyc_verifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     full_name VARCHAR(160) NOT NULL,
@@ -59,9 +81,9 @@ CREATE TABLE kyc_verifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_kyc_status ON kyc_verifications(status);
+CREATE INDEX IF NOT EXISTS idx_kyc_status ON kyc_verifications(status);
 
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_hash TEXT NOT NULL UNIQUE,
@@ -71,10 +93,10 @@ CREATE TABLE refresh_tokens (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     actor_id UUID REFERENCES users(id),
     action VARCHAR(80) NOT NULL,
@@ -86,8 +108,8 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_audit_logs_actor_created ON audit_logs(actor_id, created_at DESC);
-CREATE INDEX idx_audit_logs_entity ON audit_logs(entity, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_created ON audit_logs(actor_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity, entity_id);
 
 -- +goose Down
 DROP TABLE IF EXISTS audit_logs;

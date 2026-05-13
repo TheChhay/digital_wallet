@@ -55,7 +55,7 @@ func GenerateAccessToken(secret string, userID uuid.UUID, role string, ttl time.
 }
 
 func ParseAccessToken(secret, tokenString string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.NewParser(jwt.WithLeeway(time.Minute)).ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if token.Method != jwt.SigningMethodHS256 {
 			return nil, fmt.Errorf("unexpected signing method")
 		}

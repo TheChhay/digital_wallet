@@ -62,6 +62,7 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 		}
 		claims, err := utils.ParseAccessToken(cfg.JWTSecret, strings.TrimPrefix(header, "Bearer "))
 		if err != nil {
+			zap.L().Error("JWT validation failed", zap.Error(err), zap.String("path", c.Request.URL.Path))
 			utils.Error(c, http.StatusUnauthorized, "Invalid token", nil)
 			c.Abort()
 			return

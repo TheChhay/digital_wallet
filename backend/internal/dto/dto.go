@@ -14,9 +14,10 @@ type APIResponse struct {
 }
 
 type RegisterRequest struct {
-	Phone    string `json:"phone" binding:"required,min=7,max=32"`
-	Password string `json:"password" binding:"required,min=8,max=72"`
-	FullName string `json:"full_name" binding:"required,min=2,max=160"`
+	Phone     string `json:"phone" binding:"required,min=7,max=32"`
+	Password  string `json:"password" binding:"required,min=8,max=72"`
+	FirstName string `json:"first_name" binding:"required,min=1,max=80"`
+	LastName  string `json:"last_name" binding:"required,min=1,max=80"`
 }
 
 type LoginRequest struct {
@@ -37,7 +38,8 @@ type AuthResponse struct {
 type UserResponse struct {
 	ID              uuid.UUID `json:"id"`
 	Phone           string    `json:"phone"`
-	FullName        string    `json:"full_name"`
+	FirstName       string    `json:"first_name"`
+	LastName        string    `json:"last_name"`
 	Role            string    `json:"role"`
 	Status          string    `json:"status"`
 	ProfileImageURL string    `json:"profile_image_url"`

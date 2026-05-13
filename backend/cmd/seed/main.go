@@ -7,6 +7,7 @@ import (
 	"digital_wallet_api/internal/config"
 	"digital_wallet_api/internal/models"
 	"digital_wallet_api/internal/utils"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -15,7 +16,8 @@ const seedPassword = "Password123!"
 
 type seedUser struct {
 	Phone        string
-	FullName     string
+	FirstName    string
+	LastName     string
 	Role         models.Role
 	BalanceCents int64
 }
@@ -34,9 +36,9 @@ func main() {
 	defer sqlDB.Close()
 
 	users := []seedUser{
-		{Phone: "+85510000001", FullName: "Seed Admin", Role: models.RoleAdmin, BalanceCents: 0},
-		{Phone: "+85510000002", FullName: "Seed User A", Role: models.RoleUser, BalanceCents: 100000},
-		{Phone: "+85510000003", FullName: "Seed User B", Role: models.RoleUser, BalanceCents: 50000},
+		{Phone: "+85510000001", FirstName: "Seed", LastName: "Admin", Role: models.RoleAdmin, BalanceCents: 0},
+		{Phone: "+85510000002", FirstName: "Seed", LastName: "User A", Role: models.RoleUser, BalanceCents: 100000},
+		{Phone: "+85510000003", FirstName: "Seed", LastName: "User B", Role: models.RoleUser, BalanceCents: 50000},
 	}
 
 	for _, item := range users {
@@ -59,7 +61,8 @@ func upsertUser(db *gorm.DB, item seedUser) (*models.User, error) {
 		user = models.User{
 			Phone:        item.Phone,
 			PasswordHash: passwordHash,
-			FullName:     item.FullName,
+			FirstName:    item.FirstName,
+			LastName:     item.LastName,
 			Role:         item.Role,
 			Status:       models.UserActive,
 		}
@@ -67,7 +70,8 @@ func upsertUser(db *gorm.DB, item seedUser) (*models.User, error) {
 			Columns: []clause.Column{{Name: "phone"}},
 			DoUpdates: clause.AssignmentColumns([]string{
 				"password_hash",
-				"full_name",
+				"first_name",
+				"last_name",
 				"role",
 				"status",
 				"updated_at",

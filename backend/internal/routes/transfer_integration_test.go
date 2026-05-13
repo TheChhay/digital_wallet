@@ -17,6 +17,7 @@ import (
 	"digital_wallet_api/internal/services"
 	"digital_wallet_api/internal/storage"
 	"digital_wallet_api/internal/utils"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -191,7 +192,8 @@ func createTestUser(t *testing.T, role models.Role, phone string, balanceCents i
 		BaseModel:    models.BaseModel{ID: uuid.New()},
 		Phone:        phone,
 		PasswordHash: passwordHash,
-		FullName:     "Test " + string(role),
+		FirstName:    "Test",
+		LastName:     string(role),
 		Role:         role,
 		Status:       models.UserActive,
 	}
