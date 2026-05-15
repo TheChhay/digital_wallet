@@ -130,6 +130,16 @@ func (h *Handler) Wallet(c *gin.Context) {
 	respond(c, http.StatusOK, "Success", resp, err)
 }
 
+func (h *Handler) LookupRecipient(c *gin.Context) {
+	phone := c.Query("phone")
+	if phone == "" {
+		utils.Error(c, http.StatusBadRequest, "Phone number is required", nil)
+		return
+	}
+	resp, err := h.service.LookupRecipient(phone)
+	respond(c, http.StatusOK, "Success", resp, err)
+}
+
 func (h *Handler) Deposit(c *gin.Context) {
 	var req dto.MoneyRequest
 	if !bind(c, &req) {
@@ -248,7 +258,7 @@ func respond(c *gin.Context, status int, message string, data interface{}, err e
 		utils.Error(c, http.StatusForbidden, err.Error(), nil)
 	case errors.Is(err, services.ErrInsufficientFunds):
 		utils.Error(c, http.StatusUnprocessableEntity, err.Error(), nil)
-	case errors.Is(err, services.ErrInvalidCursor):
+	case errors.Is(err, services.ErrInvalidCursor), errors.Is(err, services.ErrSelfTransfer), errors.Is(err, services.ErrTransferToAdmin):
 		utils.Error(c, http.StatusBadRequest, err.Error(), nil)
 	case errors.Is(err, repositories.ErrNotFound), errors.Is(err, gorm.ErrRecordNotFound):
 		utils.Error(c, http.StatusNotFound, "Resource not found", nil)

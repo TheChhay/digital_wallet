@@ -24,7 +24,11 @@ import com.app.digitalwallet.data.Transaction
 import java.util.Locale
 
 @Composable
-fun TransactionDetailContent(transaction: Transaction, modifier: Modifier = Modifier) {
+fun TransactionDetailContent(
+    transaction: Transaction,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -50,12 +54,25 @@ fun TransactionDetailContent(transaction: Transaction, modifier: Modifier = Modi
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        val title = if (!transaction.receiverName.isNullOrBlank()) {
+            transaction.receiverName
+        } else transaction.merchantName.ifBlank {
+            transaction.category
+        }
+
         Text(
-            transaction.merchantName,
+            title,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
+        if (!transaction.receiverPhone.isNullOrBlank()) {
+            Text(
+                transaction.receiverPhone,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
+            )
+        }
         Text(
             transaction.category,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -68,21 +85,23 @@ fun TransactionDetailContent(transaction: Transaction, modifier: Modifier = Modi
             text = (if (transaction.isPositive) "+" else "-") + "$${String.format(Locale.US, "%,.2f", transaction.amount)}",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.error
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         DetailRow("Status", transaction.status.name, isStatus = true, status = transaction.status)
-        DetailRow("Transaction Date", transaction.date)
+        DetailRow("Transaction Date", "${transaction.date} • ${transaction.time}")
+        if (transaction.reference != null) {
+            DetailRow("Reference", transaction.reference)
+        }
         DetailRow("Payment Method", transaction.paymentMethod, icon = Icons.Default.CreditCard)
-        DetailRow("Tax (Included)", "$${String.format(Locale.US, "%,.2f", transaction.amount * 0.1)}")
 
         Spacer(modifier = Modifier.height(32.dp))
 
         PrimaryButton(
-            text = "Download Receipt",
-            onClick = { },
+            text = "Close",
+            onClick = onClose,
             modifier = Modifier.fillMaxWidth()
         )
         

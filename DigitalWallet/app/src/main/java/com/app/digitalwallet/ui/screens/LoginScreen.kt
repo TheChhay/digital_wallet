@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.app.digitalwallet.ui.screens
 
 import androidx.compose.foundation.clickable

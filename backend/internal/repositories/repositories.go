@@ -98,7 +98,10 @@ func (r *Repository) FindTransactionByIdempotencyKey(senderID uuid.UUID, key str
 
 func (r *Repository) ListUserTransactions(userID uuid.UUID, f dto.TransactionFilter) ([]models.Transaction, error) {
 	var txns []models.Transaction
-	q := r.db.Model(&models.Transaction{}).Where("sender_id = ? OR receiver_id = ?", userID, userID)
+	q := r.db.Model(&models.Transaction{}).
+		Preload("Sender").
+		Preload("Receiver").
+		Where("sender_id = ? OR receiver_id = ?", userID, userID)
 	q = applyTransactionFilters(q, f)
 	q = applyCursor(q, f)
 	err := q.Order("created_at desc, id desc").Limit(f.Limit + 1).Find(&txns).Error
@@ -107,7 +110,10 @@ func (r *Repository) ListUserTransactions(userID uuid.UUID, f dto.TransactionFil
 
 func (r *Repository) ListAllTransactions(f dto.TransactionFilter) ([]models.Transaction, error) {
 	var txns []models.Transaction
-	q := applyTransactionFilters(r.db.Model(&models.Transaction{}), f)
+	q := r.db.Model(&models.Transaction{}).
+		Preload("Sender").
+		Preload("Receiver")
+	q = applyTransactionFilters(q, f)
 	q = applyCursor(q, f)
 	err := q.Order("created_at desc, id desc").Limit(f.Limit + 1).Find(&txns).Error
 	return txns, err

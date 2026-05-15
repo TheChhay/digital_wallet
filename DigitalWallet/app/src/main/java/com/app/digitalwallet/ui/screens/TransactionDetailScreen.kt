@@ -23,7 +23,7 @@ import com.app.digitalwallet.ui.components.PrimaryButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TransactionDetailScreen(onBack: () -> Unit) {
+fun TransactionDetailScreen(transactionId: String, onBack: () -> Unit) {
     // Each screen can have its own Scaffold for specific TopBars or FABs
     Scaffold(
         topBar = {
@@ -45,6 +45,7 @@ fun TransactionDetailScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.Top
         ) {
             Text(text = "Detail Information", style = MaterialTheme.typography.headlineSmall)
+            Text(text = "ID: $transactionId", style = MaterialTheme.typography.bodyMedium)
             Text(text = "Amount: $50.00", style = MaterialTheme.typography.bodyLarge)
             
             Spacer(modifier = Modifier.height(24.dp))

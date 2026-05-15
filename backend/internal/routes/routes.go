@@ -46,6 +46,7 @@ func Setup(cfg *config.Config, logger *zap.Logger, h *handlers.Handler) *gin.Eng
 
 		wallet := v1.Group("/wallet", middleware.Auth(cfg))
 		wallet.GET("", h.Wallet)
+		wallet.GET("/recipient-lookup", h.LookupRecipient)
 		wallet.POST("/deposit", h.Deposit)
 		wallet.POST("/withdraw", h.Withdraw)
 		wallet.POST("/transfer", h.Transfer)

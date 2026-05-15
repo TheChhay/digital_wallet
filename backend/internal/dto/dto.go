@@ -94,3 +94,23 @@ type CursorResponse struct {
 type AccountStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=active frozen"`
 }
+
+type RecipientLookupResponse struct {
+	FullName string `json:"full_name"`
+}
+
+type TransactionResponse struct {
+	ID             uuid.UUID `json:"id"`
+	Reference      string    `json:"reference"`
+	Type           string    `json:"type"`
+	Status         string    `json:"status"`
+	AmountCents    int64     `json:"amount_cents"`
+	Description    string    `json:"description"`
+	CreatedAt      time.Time `json:"created_at"`
+	SenderID       *uuid.UUID `json:"sender_id,omitempty"`
+	ReceiverID     *uuid.UUID `json:"receiver_id,omitempty"`
+	MerchantName   string    `json:"merchant_name,omitempty"`
+	ReceiverName   string    `json:"receiver_name,omitempty"`
+	ReceiverPhone  string    `json:"receiver_phone,omitempty"`
+	IsPositive     *bool     `json:"is_positive,omitempty"`
+}

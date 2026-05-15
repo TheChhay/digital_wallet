@@ -11,7 +11,8 @@ data class WalletInfoResponse(
 
 data class TransactionsResponse(
     val items: List<TransactionDto>? = emptyList(),
-    @SerializedName("has_more") val hasMore: Boolean? = false
+    @SerializedName("has_more") val hasMore: Boolean? = false,
+    @SerializedName("next_cursor") val nextCursor: String? = null
 )
 
 data class TransactionDto(
@@ -23,6 +24,8 @@ data class TransactionDto(
     val description: String? = null,
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("merchant_name") val merchantName: String? = null,
+    @SerializedName("receiver_name") val receiverName: String? = null,
+    @SerializedName("receiver_phone") val receiverPhone: String? = null,
     val category: String? = null,
     val amount: Double? = null,
     val date: String? = null,
@@ -49,4 +52,9 @@ data class TransactionResponse(
     @SerializedName("transaction_id") val transactionId: String,
     val status: String,
     val message: String
+)
+
+data class RecipientLookupDto(
+    @SerializedName("full_name") val fullName: String,
+    val role: String? = "USER"
 )

@@ -42,6 +42,8 @@ import com.app.digitalwallet.ui.screens.LoginScreen
 import com.app.digitalwallet.ui.screens.ProfileScreen
 import com.app.digitalwallet.ui.screens.SplashScreen
 import com.app.digitalwallet.ui.screens.TransactionDetailScreen
+import com.app.digitalwallet.ui.screens.TransferScreen
+import com.app.digitalwallet.ui.screens.TransferSuccessScreen
 import com.app.digitalwallet.ui.screens.WalletScreen
 import com.app.digitalwallet.ui.theme.DigitalWalletTheme
 
@@ -173,14 +175,58 @@ fun MainScreen() {
             composable(Screen.Home.route) { 
                 HomeScreen(
                     viewModel = walletViewModel,
-                    onNavigateToDetail = { navController.navigate(Screen.TransactionDetail.route) }
+                    onNavigateToDetail = { transactionId -> 
+                        navController.navigate(Screen.TransactionDetail.createRoute(transactionId)) 
+                    },
+                    onNavigateToTransfer = { navController.navigate(Screen.Transfer.route) },
+                    onNavigateToAllTransactions = { navController.navigate(Screen.History.route) }
                 ) 
             }
             composable(Screen.Wallet.route) { WalletScreen(viewModel = walletViewModel) }
             composable(Screen.History.route) { HistoryScreen(viewModel = walletViewModel) }
             composable(Screen.Profile.route) { ProfileScreen(navController = navController) }
-            composable(Screen.TransactionDetail.route) {
-                TransactionDetailScreen(onBack = { navController.popBackStack() })
+            composable(
+                route = Screen.TransactionDetail.route,
+                arguments = listOf(
+                    androidx.navigation.navArgument("transactionId") { type = androidx.navigation.NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+                TransactionDetailScreen(
+                    transactionId = transactionId,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.Transfer.route) {
+                TransferScreen(
+                    viewModel = walletViewModel,
+                    onBack = { navController.popBackStack() },
+                    onNavigateToSuccess = { amount, recipient ->
+                        walletViewModel.refresh()
+                        navController.navigate(Screen.TransferSuccess.createRoute(amount, recipient)) {
+                            popUpTo(Screen.Transfer.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable(
+                route = Screen.TransferSuccess.route,
+                arguments = listOf(
+                    androidx.navigation.navArgument("amount") { type = androidx.navigation.NavType.StringType },
+                    androidx.navigation.navArgument("recipient") { type = androidx.navigation.NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val amount = backStackEntry.arguments?.getString("amount") ?: ""
+                val recipient = backStackEntry.arguments?.getString("recipient") ?: ""
+                TransferSuccessScreen(
+                    amount = amount,
+                    recipientName = recipient,
+                    onDone = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
+                    }
+                )
             }
             
             // Profile related screens

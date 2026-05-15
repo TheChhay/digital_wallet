@@ -1,10 +1,12 @@
 package com.app.digitalwallet.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,13 +32,12 @@ import java.util.Locale
 @Composable
 fun BalanceCard(
     balance: Double,
-    growth: Double,
     modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(170.dp),
+            .height(150.dp),
         shape = RoundedCornerShape(24.dp),
         color = Color.Transparent
     ) {
@@ -52,7 +53,8 @@ fun BalanceCard(
                 )
                 .padding(24.dp)
         ) {
-            Column {
+            Column(modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center){
                 Text(
                     text = "TOTAL BALANCE",
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
@@ -66,30 +68,6 @@ fun BalanceCard(
                     fontWeight = FontWeight.Bold
                 )
                 
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Surface(
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.TrendingUp,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "+$growth% this month",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
             }
         }
     }

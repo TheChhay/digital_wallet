@@ -53,14 +53,26 @@ fun TransactionItem(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                val title = if (!transaction.receiverName.isNullOrBlank()) {
+                    transaction.receiverName
+                } else if (transaction.merchantName.isNotBlank()) {
+                    transaction.merchantName
+                } else {
+                    transaction.category
+                }
+
                 Text(
-                    transaction.merchantName, 
+                    text = title, 
                     fontWeight = FontWeight.Bold, 
                     fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    subtitle, 
+                    text = if (!transaction.receiverPhone.isNullOrBlank()) {
+                        "${transaction.receiverPhone} • ${transaction.time}"
+                    } else {
+                        subtitle
+                    },
                     color = MaterialTheme.colorScheme.onSurfaceVariant, 
                     fontSize = 11.sp
                 )
@@ -71,7 +83,7 @@ fun TransactionItem(
                     text = (if (transaction.isPositive) "+" else "-") + "$${String.format(Locale.US, "%,.2f", transaction.amount)}",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    color = if (transaction.isPositive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
+                    color = if (transaction.isPositive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
                 )
                 
                 val statusColor = when(transaction.status) {

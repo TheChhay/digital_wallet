@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"digital_wallet_api/internal/config"
@@ -24,6 +25,8 @@ var (
 	ErrDuplicateTransfer  = errors.New("duplicate transfer request")
 	ErrForbidden          = errors.New("forbidden")
 	ErrInvalidCursor      = errors.New("invalid cursor")
+	ErrSelfTransfer       = errors.New("cannot transfer to yourself")
+	ErrTransferToAdmin    = errors.New("cannot transfer to an admin account")
 )
 
 type Service struct {
@@ -190,6 +193,16 @@ func (s *Service) Wallet(userID uuid.UUID) (*models.Wallet, error) {
 	return s.repo.GetWalletByUserID(userID)
 }
 
+func (s *Service) LookupRecipient(phone string) (*dto.RecipientLookupResponse, error) {
+	user, err := s.repo.FindUserByPhone(phone)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.RecipientLookupResponse{
+		FullName: fmt.Sprintf("%s %s", user.FirstName, user.LastName),
+	}, nil
+}
+
 func (s *Service) Deposit(userID uuid.UUID, req dto.MoneyRequest) (*models.Transaction, error) {
 	return s.moneyMovement(nil, &userID, models.TransactionDeposit, req.AmountCents, req.Description)
 }
@@ -207,7 +220,10 @@ func (s *Service) Transfer(senderID uuid.UUID, req dto.TransferRequest) (*models
 		return nil, err
 	}
 	if receiver.ID == senderID {
-		return nil, fmt.Errorf("cannot transfer to yourself")
+		return nil, ErrSelfTransfer
+	}
+	if receiver.Role == models.RoleAdmin {
+		return nil, ErrTransferToAdmin
 	}
 	if receiver.Status == models.UserFrozen {
 		return nil, ErrFrozenAccount
@@ -308,7 +324,13 @@ func (s *Service) UserTransactions(userID uuid.UUID, f dto.TransactionFilter) (*
 	if err != nil {
 		return nil, err
 	}
-	return paginateTransactions(items, f.Limit), nil
+
+	mappedItems := make([]dto.TransactionResponse, len(items))
+	for i, item := range items {
+		mappedItems[i] = mapTransaction(item)
+	}
+
+	return paginateTransactions(mappedItems, f.Limit), nil
 }
 
 func (s *Service) AllTransactions(f dto.TransactionFilter) (*dto.CursorResponse, error) {
@@ -319,7 +341,13 @@ func (s *Service) AllTransactions(f dto.TransactionFilter) (*dto.CursorResponse,
 	if err != nil {
 		return nil, err
 	}
-	return paginateTransactions(items, f.Limit), nil
+
+	mappedItems := make([]dto.TransactionResponse, len(items))
+	for i, item := range items {
+		mappedItems[i] = mapTransaction(item)
+	}
+
+	return paginateTransactions(mappedItems, f.Limit), nil
 }
 
 func (s *Service) ListUsers(f dto.TransactionFilter) (*dto.CursorResponse, error) {
@@ -384,6 +412,45 @@ func mapUser(user *models.User) dto.UserResponse {
 	}
 }
 
+func mapTransaction(txn models.Transaction) dto.TransactionResponse {
+	resp := dto.TransactionResponse{
+		ID:          txn.ID,
+		Reference:   txn.Reference,
+		Type:        string(txn.Type),
+		Status:      string(txn.Status),
+		AmountCents: txn.AmountCents,
+		Description: txn.Description,
+		CreatedAt:   txn.CreatedAt,
+		SenderID:    txn.SenderID,
+		ReceiverID:  txn.ReceiverID,
+	}
+
+	// Calculate full name: FirstName + LastName
+	if txn.Type == models.TransactionTransfer {
+		if txn.Receiver != nil {
+			resp.ReceiverName = fmt.Sprintf("%s %s", txn.Receiver.FirstName, txn.Receiver.LastName)
+			resp.ReceiverPhone = txn.Receiver.Phone
+		}
+		if txn.Sender != nil {
+			resp.MerchantName = fmt.Sprintf("%s %s", txn.Sender.FirstName, txn.Sender.LastName)
+		}
+		// Typically a transfer sent is negative, received is positive.
+		// For the purpose of the API response, we might need a context of WHO is asking,
+		// but since this is a generic map, we'll let the client decide or handle it elsewhere.
+		// However, for simplicity if SenderID is present and ReceiverID is present, it's a transfer.
+	} else if txn.Type == models.TransactionDeposit {
+		resp.MerchantName = "Cash Deposit"
+		isPos := true
+		resp.IsPositive = &isPos
+	} else if txn.Type == models.TransactionWithdraw {
+		resp.MerchantName = "Cash Withdrawal"
+		isPos := false
+		resp.IsPositive = &isPos
+	}
+
+	return resp
+}
+
 func normalizeCursor(f *dto.TransactionFilter) error {
 	if f.Limit < 1 || f.Limit > 100 {
 		f.Limit = 20
@@ -413,15 +480,30 @@ func paginateUsers(items []models.User, limit int) *dto.CursorResponse {
 	return resp
 }
 
-func paginateTransactions(items []models.Transaction, limit int) *dto.CursorResponse {
-	hasMore := len(items) > limit
-	if hasMore {
-		items = items[:limit]
+func paginateTransactions(items interface{}, limit int) *dto.CursorResponse {
+	val := reflect.ValueOf(items)
+	if val.Kind() != reflect.Slice {
+		return &dto.CursorResponse{Items: items, Limit: limit}
 	}
-	resp := &dto.CursorResponse{Items: items, Limit: limit, HasMore: hasMore}
-	if hasMore && len(items) > 0 {
-		last := items[len(items)-1]
-		resp.NextCursor = encodeCursor(last.CreatedAt, last.ID)
+
+	count := val.Len()
+	hasMore := count > limit
+	displayItems := items
+	if hasMore {
+		displayItems = val.Slice(0, limit).Interface()
+	}
+
+	resp := &dto.CursorResponse{Items: displayItems, Limit: limit, HasMore: hasMore}
+
+	if hasMore && limit > 0 {
+		last := val.Index(limit - 1).Interface()
+		if t, ok := last.(dto.TransactionResponse); ok {
+			resp.NextCursor = encodeCursor(t.CreatedAt, t.ID)
+		} else if u, ok := last.(models.User); ok {
+			resp.NextCursor = encodeCursor(u.CreatedAt, u.ID)
+		} else if txn, ok := last.(models.Transaction); ok {
+			resp.NextCursor = encodeCursor(txn.CreatedAt, txn.ID)
+		}
 	}
 	return resp
 }

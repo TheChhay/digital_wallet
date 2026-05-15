@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.app.digitalwallet.api.dto.LoginRequest
 import com.app.digitalwallet.api.dto.RegisterRequest
 import com.app.digitalwallet.data.AuthRepository
+import com.app.digitalwallet.utils.PhoneNumberUtils
 import kotlinx.coroutines.launch
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
@@ -23,9 +24,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun login(phone: String, password: String, onLoginSuccess: () -> Unit) {
         viewModelScope.launch {
             loginUiState = loginUiState.copy(isLoading = true, error = null)
+            val normalizedPhone = PhoneNumberUtils.normalize(phone)
             try {
-                val response = repository.login(LoginRequest(phone, password))
-                if (response.success) {
+                val response = repository.login(LoginRequest(normalizedPhone, password))
+                if (response.success && response.data != null) {
                     loginUiState = loginUiState.copy(isLoading = false)
                     onLoginSuccess()
                 } else {
@@ -40,8 +42,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun register(phone: String, fullName: String, password: String, onRegisterSuccess: () -> Unit) {
         viewModelScope.launch {
             registerUiState = registerUiState.copy(isLoading = true, error = null)
+            val normalizedPhone = PhoneNumberUtils.normalize(phone)
             try {
-                val response = repository.register(RegisterRequest(phone, password, fullName))
+                val response = repository.register(RegisterRequest(normalizedPhone, password, fullName))
                 if (response.success) {
                     registerUiState = registerUiState.copy(isLoading = false)
                     onRegisterSuccess()

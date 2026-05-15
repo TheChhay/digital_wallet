@@ -3,17 +3,19 @@ package com.app.digitalwallet.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -30,9 +32,16 @@ import com.app.digitalwallet.ui.components.TransactionItem
 import com.app.digitalwallet.ui.components.ActionButton
 import com.app.digitalwallet.ui.components.BalanceCard
 import com.app.digitalwallet.ui.components.RewardsCard
+import com.app.digitalwallet.ui.components.TransactionDetailContent
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import com.app.digitalwallet.data.Transaction
 import com.app.digitalwallet.data.WalletInfo
 import com.app.digitalwallet.viewmodel.WalletUiState
@@ -41,8 +50,18 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: WalletViewModel, onNavigateToDetail: () -> Unit) {
+fun HomeScreen(
+    viewModel: WalletViewModel, 
+    onNavigateToDetail: (String) -> Unit,
+    onNavigateToTransfer: () -> Unit,
+    onNavigateToAllTransactions: () -> Unit
+) {
     val uiState by viewModel.uiState.collectAsState()
+    val todayTransactions by viewModel.todayTransactions.collectAsState()
+    
+    val sheetState = rememberModalBottomSheetState()
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
 
     Scaffold(
         topBar = {
@@ -95,8 +114,15 @@ fun HomeScreen(viewModel: WalletViewModel, onNavigateToDetail: () -> Unit) {
             is WalletUiState.Success -> {
                 HomeContent(
                     modifier = Modifier.padding(innerPadding),
+                    viewModel = viewModel,
                     walletInfo = state.walletInfo,
-                    onNavigateToDetail = onNavigateToDetail
+                    todayTransactions = todayTransactions,
+                    onTransactionClick = { transaction ->
+                        selectedTransaction = transaction
+                        showBottomSheet = true
+                    },
+                    onNavigateToTransfer = onNavigateToTransfer,
+                    onNavigateToAllTransactions = onNavigateToAllTransactions
                 )
             }
             is WalletUiState.Error -> {
@@ -105,84 +131,147 @@ fun HomeScreen(viewModel: WalletViewModel, onNavigateToDetail: () -> Unit) {
                 }
             }
         }
+        
+        if (showBottomSheet && selectedTransaction != null) {
+            ModalBottomSheet(
+                onDismissRequest = { showBottomSheet = false },
+                sheetState = sheetState,
+                containerColor = MaterialTheme.colorScheme.surface,
+                dragHandle = { BottomSheetDefaults.DragHandle() }
+            ) {
+                TransactionDetailContent(
+                    transaction = selectedTransaction!!,
+                    onClose = { showBottomSheet = false }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeContent(
+    modifier: Modifier = Modifier,
+    viewModel: WalletViewModel,
+    walletInfo: WalletInfo,
+    todayTransactions: List<Transaction>,
+    onTransactionClick: (Transaction) -> Unit,
+    onNavigateToTransfer: () -> Unit,
+    onNavigateToAllTransactions: () -> Unit
+) {
+    var isRefreshing by remember { mutableStateOf(false) }
+    
+    // Reset isRefreshing when uiState changes from Loading
+    androidx.compose.runtime.LaunchedEffect(viewModel.uiState.collectAsState().value) {
+        if (viewModel.uiState.value !is WalletUiState.Loading) {
+            isRefreshing = false
+        }
+    }
+    
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            viewModel.refresh()
+        },
+        modifier = modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 1. Total Balance Card
+            BalanceCard(walletInfo.balance)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 2. Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ActionButton(icon = Icons.AutoMirrored.Filled.Send, label = "Send", onClick = onNavigateToTransfer)
+                ActionButton(icon = Icons.Outlined.QrCodeScanner, label = "Scan QR", onClick = { /* Scan */ })
+                ActionButton(icon = Icons.Outlined.QrCodeScanner, label = "My QR", onClick = { /* Scan */ })
+
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // 3. Recent Transactions Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Transactions",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = "See All",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clickable { onNavigateToAllTransactions() }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 4. Transactions List
+            if (todayTransactions.isEmpty()) {
+                EmptyTransactionsState()
+            } else {
+                todayTransactions.forEach { transaction ->
+                    TransactionItem(
+                        transaction = transaction, 
+                        onClick = { onTransactionClick(transaction) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
     }
 }
 
 @Composable
-fun HomeContent(
-    modifier: Modifier = Modifier,
-    walletInfo: WalletInfo,
-    onNavigateToDetail: () -> Unit
-) {
+fun EmptyTransactionsState() {
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
+        modifier = Modifier.fillMaxWidth()
+            .padding(vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Surface(
+            modifier = Modifier.size(80.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ){
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ReceiptLong, null, Modifier.size(40.dp), MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
-
-        // 1. Total Balance Card
-        BalanceCard(walletInfo.balance, walletInfo.monthlyGrowth)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 2. Action Buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            ActionButton(icon = Icons.Default.Send, label = "Send", onClick = { /* Send */ })
-            ActionButton(icon = Icons.Default.AddCard, label = "Deposit", onClick = { /* Deposit */ })
-            ActionButton(icon = Icons.Default.Payments, label = "Withdraw", onClick = { /* Withdraw */ })
-            ActionButton(icon = Icons.Outlined.QrCodeScanner, label = "Scan QR", onClick = { /* Scan */ })
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // 3. Recent Transactions Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Recent Transactions",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "See All",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable { /* See All */ }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 4. Transactions List
-        walletInfo.recentTransactions.forEach { transaction ->
-            TransactionItem(
-                transaction = transaction,
-                onClick = onNavigateToDetail
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 5. Rewards Card
-        RewardsCard(
-            title = "New Rewards!",
-            subtitle = "You've earned a cashback boost.",
-            buttonText = "Claim Now",
-            onButtonClick = { /* Claim */ }
+        Text(
+            "No transactions yet",
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            "Your recent activity will appear here",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.outline
+        )
     }
 }
 

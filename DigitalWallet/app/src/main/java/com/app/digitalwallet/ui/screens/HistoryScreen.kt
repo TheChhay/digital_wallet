@@ -164,7 +164,10 @@ fun HistoryScreen(viewModel: WalletViewModel) {
                 shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                 dragHandle = { BottomSheetDefaults.DragHandle() }
             ) {
-                TransactionDetailContent(selectedTransaction!!)
+                TransactionDetailContent(
+                    transaction = selectedTransaction!!,
+                    onClose = { showSheet = false }
+                )
             }
         }
     }

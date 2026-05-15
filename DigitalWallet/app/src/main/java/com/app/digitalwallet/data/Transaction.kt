@@ -18,6 +18,9 @@ enum class TransactionStatus {
 data class Transaction(
     val id: String = "",
     val merchantName: String = "Unknown",
+    val receiverName: String? = null,
+    val receiverPhone: String? = null,
+    val reference: String? = null,
     val category: String = "General",
     val amount: Double = 0.0,
     val date: String = "",
@@ -26,7 +29,8 @@ data class Transaction(
     val icon: ImageVector = Icons.Default.Payments,
     val isPositive: Boolean = false,
     val paymentMethod: String = "Balance",
-    val tax: Double = 0.0
+    val tax: Double = 0.0,
+    val createdAt: String = "" // For sorting
 ) {
     companion object {
         fun getIconForName(iconName: String): ImageVector {

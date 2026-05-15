@@ -17,7 +17,8 @@ class AuthRepository(
         if (response.success && response.data != null) {
             tokenManager.saveTokens(
                 response.data.accessToken,
-                response.data.refreshToken
+                response.data.refreshToken,
+                response.data.user.phone
             )
         }
         return response
