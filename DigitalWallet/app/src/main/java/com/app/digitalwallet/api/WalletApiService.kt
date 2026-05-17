@@ -3,20 +3,20 @@ package com.app.digitalwallet.api
 import com.app.digitalwallet.api.dto.APIResponse
 import com.app.digitalwallet.api.dto.MoneyRequest
 import com.app.digitalwallet.api.dto.RecipientLookupDto
-import com.app.digitalwallet.api.dto.SendMoneyRequest
 import com.app.digitalwallet.api.dto.TransactionResponse
 import com.app.digitalwallet.api.dto.WalletInfoResponse
 import com.app.digitalwallet.api.dto.TransactionsResponse
+import com.app.digitalwallet.api.dto.TransferMoneyRequest
 import com.app.digitalwallet.api.dto.UserResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 // WalletApiService.kt
 
 interface WalletApiService {
-    // Change "wallet/info" to "wallet"
     @GET("wallet")
     suspend fun getWalletInfo(): APIResponse<WalletInfoResponse>
 
@@ -26,9 +26,11 @@ interface WalletApiService {
     @GET("wallet/recipient-lookup")
     suspend fun lookupRecipient(@Query("phone") phone: String): APIResponse<RecipientLookupDto>
 
-    // Change "wallet/send" to "wallet/transfer"
+    @GET("wallet/get-userinfo-by-wallet-id")
+    suspend fun findUserByWalletId(@Query("wallet_id") walletId: String): APIResponse<RecipientLookupDto>
+
     @POST("wallet/transfer")
-    suspend fun sendMoney(@Body request: SendMoneyRequest): APIResponse<TransactionResponse>
+    suspend fun transferMoney(@Body request: TransferMoneyRequest): APIResponse<TransactionResponse>
 
     @POST("wallet/deposit")
     suspend fun deposit(@Body request: MoneyRequest): APIResponse<TransactionResponse>

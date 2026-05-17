@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"digital_wallet_api/internal/dto"
-	"digital_wallet_api/internal/models"
 	"github.com/google/uuid"
 )
 
@@ -42,9 +41,9 @@ func TestCursorRoundTrip(t *testing.T) {
 func TestPaginateTransactionsReturnsNextCursor(t *testing.T) {
 	firstID := uuid.New()
 	secondID := uuid.New()
-	items := []models.Transaction{
-		{BaseModel: models.BaseModel{ID: firstID, CreatedAt: time.Now().UTC()}},
-		{BaseModel: models.BaseModel{ID: secondID, CreatedAt: time.Now().UTC().Add(-time.Minute)}},
+	items := []dto.TransactionResponse{
+		{ID: firstID, CreatedAt: time.Now().UTC()},
+		{ID: secondID, CreatedAt: time.Now().UTC().Add(-time.Minute)},
 	}
 
 	resp := paginateTransactions(items, 1)
@@ -55,7 +54,7 @@ func TestPaginateTransactionsReturnsNextCursor(t *testing.T) {
 	if resp.NextCursor == "" {
 		t.Fatalf("expected next cursor")
 	}
-	if len(resp.Items.([]models.Transaction)) != 1 {
+	if len(resp.Items) != 1 {
 		t.Fatalf("expected one returned item")
 	}
 }

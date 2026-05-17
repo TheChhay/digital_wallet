@@ -1,9 +1,8 @@
 package com.app.digitalwallet.data
 
-import com.app.digitalwallet.api.RetrofitClient
 import com.app.digitalwallet.api.WalletApiService
 import com.app.digitalwallet.api.dto.MoneyRequest
-import com.app.digitalwallet.api.dto.SendMoneyRequest
+import com.app.digitalwallet.api.dto.TransferMoneyRequest
 import com.app.digitalwallet.api.dto.TransactionDto
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -11,15 +10,19 @@ import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class WalletInfo(
     val balance: Double,
+    val walletId: String,
     val currency: String = "USD",
     val monthlyGrowth: Double = 2.5,
     val recentTransactions: List<Transaction> = emptyList()
 )
 
-class WalletRepository(private val apiService: WalletApiService = RetrofitClient.walletApi) {
+@Singleton
+class WalletRepository @Inject constructor(private val apiService: WalletApiService) {
 
     fun getWalletInfo(): Flow<WalletInfo> = flow {
         val response = apiService.getWalletInfo()
@@ -28,6 +31,7 @@ class WalletRepository(private val apiService: WalletApiService = RetrofitClient
             
             emit(WalletInfo(
                 balance = dto.balanceCents / 100.0,
+                walletId = dto.walletId,
                 currency = dto.currency ?: "USD",
                 monthlyGrowth = dto.monthlyGrowth ?: 0.0,
                 recentTransactions = emptyList() // Now fetched via getAllTransactions
@@ -58,11 +62,12 @@ class WalletRepository(private val apiService: WalletApiService = RetrofitClient
         }
     }
 
-    suspend fun sendMoney(recipientPhone: String, amount: Double, note: String?): Boolean {
+    suspend fun transferMoney(recipientPhone: String? = null, walletId: String? = null, amount: Double, note: String?): Boolean {
         val amountCents = (amount * 100).toLong()
         val idempotencyKey = UUID.randomUUID().toString()
-        val response = apiService.sendMoney(SendMoneyRequest(
+        val response = apiService.transferMoney(TransferMoneyRequest(
             receiverPhone = recipientPhone,
+            receiverWalletId = walletId,
             amountCents = amountCents,
             description = note,
             idempotencyKey = idempotencyKey
@@ -70,13 +75,20 @@ class WalletRepository(private val apiService: WalletApiService = RetrofitClient
         return response.success
     }
 
-    suspend fun lookupRecipient(phone: String): RecipientLookupResult? {
+    suspend fun findUserByWalletId(phone: String? = null, walletId: String? = null): RecipientLookupResult? {
         return try {
-            val response = apiService.lookupRecipient(phone)
+            val response = if (walletId != null) {
+                apiService.findUserByWalletId(walletId)
+            } else {
+                apiService.lookupRecipient(phone ?: "")
+            }
+
             if (response.success && response.data != null) {
                 RecipientLookupResult(
                     fullName = response.data.fullName,
-                    role = response.data.role ?: "USER"
+                    phone = response.data.phone,
+                    id = response.data.id
+
                 )
             } else {
                 null
@@ -88,7 +100,8 @@ class WalletRepository(private val apiService: WalletApiService = RetrofitClient
 
     data class RecipientLookupResult(
         val fullName: String,
-        val role: String
+        val phone: String?,
+        val id: String?
     )
 
     suspend fun deposit(amount: Double): Boolean {

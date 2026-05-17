@@ -11,6 +11,7 @@ import (
 	"digital_wallet_api/internal/services"
 	"digital_wallet_api/internal/storage"
 	"digital_wallet_api/internal/utils"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -83,7 +84,10 @@ func (h *Handler) UpdateProfileImage(c *gin.Context) {
 		return
 	}
 
-	var req dto.ProfileImageRequest
+	var req struct {
+		ProfileImageURL string `json:"profile_image_url" binding:"required,url"`
+	}
+
 	if !bind(c, &req) {
 		return
 	}
@@ -130,13 +134,23 @@ func (h *Handler) Wallet(c *gin.Context) {
 	respond(c, http.StatusOK, "Success", resp, err)
 }
 
-func (h *Handler) LookupRecipient(c *gin.Context) {
-	phone := c.Query("phone")
-	if phone == "" {
-		utils.Error(c, http.StatusBadRequest, "Phone number is required", nil)
+func (h *Handler) GetUserInfoByWalletID(c *gin.Context) {
+	walletID := c.Query("wallet_id")
+	if walletID == "" {
+		walletID = c.Query("address")
+	}
+	if walletID == "" {
+		utils.Error(c, http.StatusBadRequest, "wallet_id is required", nil)
 		return
 	}
-	resp, err := h.service.LookupRecipient(phone)
+
+	id, err := uuid.Parse(walletID)
+	if err != nil {
+		utils.Error(c, http.StatusBadRequest, "invalid wallet_id", nil)
+		return
+	}
+
+	resp, err := h.service.GetUserInfoByWalletID(id)
 	respond(c, http.StatusOK, "Success", resp, err)
 }
 
@@ -212,6 +226,34 @@ func (h *Handler) SetAccountStatus(c *gin.Context) {
 	}
 	resp, err := h.service.SetAccountStatus(userID, req.Status)
 	respond(c, http.StatusOK, "Account status updated", resp, err)
+}
+
+func (h *Handler) GenerateQR(c *gin.Context) {
+	var req dto.GenerateQRRequest
+	if !bind(c, &req) {
+		return
+	}
+	resp, err := h.service.GenerateQR(req)
+	respond(c, http.StatusCreated, "QR Token generated", resp, err)
+}
+
+func (h *Handler) ValidateQR(c *gin.Context) {
+	var req dto.ValidateTokenRequest
+	if !bind(c, &req) {
+		return
+	}
+	resp, err := h.service.ValidateQR(req)
+	respond(c, http.StatusOK, "Token validated", resp, err)
+}
+
+func (h *Handler) GetStaticQR(c *gin.Context) {
+	walletID := c.Query("address")
+	if walletID == "" {
+		utils.Error(c, http.StatusBadRequest, "address (wallet_id) is required", nil)
+		return
+	}
+	resp, err := h.service.GenerateStaticQR(walletID)
+	respond(c, http.StatusOK, "Static QR generated", resp, err)
 }
 
 func bind(c *gin.Context, req interface{}) bool {

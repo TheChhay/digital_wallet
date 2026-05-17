@@ -2,15 +2,16 @@ package com.app.digitalwallet.data
 
 import android.content.Context
 import com.app.digitalwallet.api.AuthApiService
-import com.app.digitalwallet.api.RetrofitClient
 import com.app.digitalwallet.api.dto.*
 import com.app.digitalwallet.auth.TokenManager
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class AuthRepository(
-    private val authApi: AuthApiService = RetrofitClient.authApi,
-    context: Context
+@Singleton
+class AuthRepository @Inject constructor(
+    private val authApi: AuthApiService,
+    private val tokenManager: TokenManager
 ) {
-    private val tokenManager = TokenManager.getInstance(context)
 
     suspend fun login(request: LoginRequest): APIResponse<AuthResponse> {
         val response = authApi.login(request)

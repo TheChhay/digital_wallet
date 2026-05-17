@@ -1,60 +1,72 @@
 package com.app.digitalwallet.api.dto
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class WalletInfoResponse(
-    @SerializedName("balance_cents") val balanceCents: Long,
+    @SerialName("id") val walletId: String,
+    @SerialName("balance_cents") val balanceCents: Long,
     val currency: String? = "USD",
-    @SerializedName("monthly_growth") val monthlyGrowth: Double? = 0.0,
-    @SerializedName("recent_transactions") val recentTransactions: List<TransactionDto>? = emptyList()
+    @SerialName("monthly_growth") val monthlyGrowth: Double? = 0.0,
+    @SerialName("recent_transactions") val recentTransactions: List<TransactionDto>? = emptyList()
 )
 
+@Serializable
 data class TransactionsResponse(
     val items: List<TransactionDto>? = emptyList(),
-    @SerializedName("has_more") val hasMore: Boolean? = false,
-    @SerializedName("next_cursor") val nextCursor: String? = null
+    @SerialName("has_more") val hasMore: Boolean? = false,
+    @SerialName("next_cursor") val nextCursor: String? = null
 )
 
+@Serializable
 data class TransactionDto(
     val id: String? = null,
     val reference: String? = null,
     val type: String? = null,
     val status: String? = null,
-    @SerializedName("amount_cents") val amountCents: Long? = 0,
+    @SerialName("amount_cents") val amountCents: Long? = 0,
     val description: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null,
-    @SerializedName("merchant_name") val merchantName: String? = null,
-    @SerializedName("receiver_name") val receiverName: String? = null,
-    @SerializedName("receiver_phone") val receiverPhone: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("merchant_name") val merchantName: String? = null,
+    @SerialName("receiver_name") val receiverName: String? = null,
+    @SerialName("receiver_phone") val receiverPhone: String? = null,
     val category: String? = null,
     val amount: Double? = null,
     val date: String? = null,
     val time: String? = null,
     val icon: String? = null,
-    @SerializedName("is_positive") val isPositive: Boolean? = null,
-    @SerializedName("payment_method") val paymentMethod: String? = null,
+    @SerialName("is_positive") val isPositive: Boolean? = null,
+    @SerialName("payment_method") val paymentMethod: String? = null,
     val tax: Double? = null
 )
 
-data class SendMoneyRequest(
-    @SerializedName("receiver_phone") val receiverPhone: String,
-    @SerializedName("amount_cents") val amountCents: Long,
+@Serializable
+data class TransferMoneyRequest(
+    @SerialName("receiver_phone") val receiverPhone: String? = null,
+    @SerialName("receiver_wallet_id") val receiverWalletId: String? = null,
+    @SerialName("amount_cents") val amountCents: Long,
     val description: String? = null,
-    @SerializedName("idempotency_key") val idempotencyKey: String
+    @SerialName("idempotency_key") val idempotencyKey: String
 )
 
+@Serializable
 data class MoneyRequest(
-    @SerializedName("amount_cents") val amountCents: Long,
+    @SerialName("amount_cents") val amountCents: Long,
     val description: String? = null
 )
 
+@Serializable
 data class TransactionResponse(
-    @SerializedName("transaction_id") val transactionId: String,
-    val status: String,
-    val message: String
+    @SerialName("id") val id: String? = null,
+    @SerialName("reference") val reference: String? = null,
+    @SerialName("status") val status: String? = null,
+    @SerialName("message") val message: String? = null
 )
 
+@Serializable
 data class RecipientLookupDto(
-    @SerializedName("full_name") val fullName: String,
-    val role: String? = "USER"
+    @SerialName("full_name") val fullName: String,
+    @SerialName("phone") val phone: String? = null,
+    @SerialName("id") val id: String? = null,
 )

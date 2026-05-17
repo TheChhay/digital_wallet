@@ -6,6 +6,7 @@ import com.app.digitalwallet.data.Transaction
 import com.app.digitalwallet.data.WalletInfo
 import com.app.digitalwallet.data.WalletRepository
 import com.app.digitalwallet.utils.PhoneNumberUtils
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,8 +18,10 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
-class WalletViewModel(private val repository: WalletRepository = WalletRepository()) : ViewModel() {
+@HiltViewModel
+class WalletViewModel @Inject constructor(private val repository: WalletRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WalletUiState>(WalletUiState.Loading)
     val uiState: StateFlow<WalletUiState> = _uiState.asStateFlow()
@@ -97,8 +100,7 @@ class WalletViewModel(private val repository: WalletRepository = WalletRepositor
         }
     }
 
-    fun sendMoney(phone: String, amount: Double, note: String?, onComplete: (Boolean) -> Unit) {
-        val normalizedPhone = PhoneNumberUtils.normalize(phone)
+    fun transferMoney(phone: String? = null, walletId: String? = null, amount: Double, note: String?, onComplete: (Boolean) -> Unit) {
         val currentBalance = (uiState.value as? WalletUiState.Success)?.walletInfo?.balance ?: 0.0
         if (amount > currentBalance) {
             _transferStatus.value = TransferStatus.Error("Insufficient balance")
@@ -109,7 +111,13 @@ class WalletViewModel(private val repository: WalletRepository = WalletRepositor
         viewModelScope.launch {
             _transferStatus.value = TransferStatus.Loading
             try {
-                val success = repository.sendMoney(normalizedPhone, amount, note)
+                val finalRecipientPhone = phone?.let { PhoneNumberUtils.normalize(it) }
+                val success = repository.transferMoney(
+                    recipientPhone = finalRecipientPhone,
+                    walletId = walletId,
+                    amount = amount,
+                    note = note
+                )
                 if (success) {
                     refresh()
                     _transferStatus.value = TransferStatus.Success
@@ -124,10 +132,16 @@ class WalletViewModel(private val repository: WalletRepository = WalletRepositor
         }
     }
 
-    fun lookupRecipient(phone: String, onResult: (WalletRepository.RecipientLookupResult?) -> Unit) {
+    fun lookupRecipient(phone: String? = null, walletId: String? = null, onResult: (WalletRepository.RecipientLookupResult?) -> Unit) {
         viewModelScope.launch {
-            val normalizedPhone = PhoneNumberUtils.normalize(phone)
-            val result = repository.lookupRecipient(normalizedPhone)
+            val result = when {
+                walletId != null -> repository.findUserByWalletId(walletId = walletId)
+                phone != null -> {
+                    val normalizedPhone = PhoneNumberUtils.normalize(phone)
+                    repository.findUserByWalletId(phone = normalizedPhone)
+                }
+                else -> null
+            }
             onResult(result)
         }
     }

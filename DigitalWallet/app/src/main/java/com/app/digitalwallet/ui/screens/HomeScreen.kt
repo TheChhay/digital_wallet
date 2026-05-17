@@ -1,14 +1,13 @@
 package com.app.digitalwallet.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.Icons.AutoMirrored
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -17,25 +16,17 @@ import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.app.digitalwallet.ui.theme.ZenAccent
-import com.app.digitalwallet.ui.theme.ZenBlue
-import com.app.digitalwallet.ui.theme.ZenGray
 import com.app.digitalwallet.ui.theme.ZenPrimary
 import com.app.digitalwallet.ui.components.TransactionItem
 import com.app.digitalwallet.ui.components.ActionButton
 import com.app.digitalwallet.ui.components.BalanceCard
-import com.app.digitalwallet.ui.components.RewardsCard
 import com.app.digitalwallet.ui.components.TransactionDetailContent
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,14 +37,15 @@ import com.app.digitalwallet.data.Transaction
 import com.app.digitalwallet.data.WalletInfo
 import com.app.digitalwallet.viewmodel.WalletUiState
 import com.app.digitalwallet.viewmodel.WalletViewModel
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: WalletViewModel, 
-    onNavigateToDetail: (String) -> Unit,
     onNavigateToTransfer: () -> Unit,
+    onNavigateToScan: () -> Unit,
+    onNavigateToMyQR: (String) -> Unit,
+    onNavigateToRequest: () -> Unit,
     onNavigateToAllTransactions: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -122,6 +114,11 @@ fun HomeScreen(
                         showBottomSheet = true
                     },
                     onNavigateToTransfer = onNavigateToTransfer,
+                    onNavigateToScan = onNavigateToScan,
+                    onNavigateToMyQR = { 
+                        onNavigateToMyQR(state.walletInfo.walletId)
+                    },
+                    onNavigateToRequest = onNavigateToRequest,
                     onNavigateToAllTransactions = onNavigateToAllTransactions
                 )
             }
@@ -157,6 +154,9 @@ fun HomeContent(
     todayTransactions: List<Transaction>,
     onTransactionClick: (Transaction) -> Unit,
     onNavigateToTransfer: () -> Unit,
+    onNavigateToScan: () -> Unit,
+    onNavigateToMyQR: () -> Unit,
+    onNavigateToRequest: () -> Unit,
     onNavigateToAllTransactions: () -> Unit
 ) {
     var isRefreshing by remember { mutableStateOf(false) }
@@ -195,10 +195,10 @@ fun HomeContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ActionButton(icon = Icons.AutoMirrored.Filled.Send, label = "Send", onClick = onNavigateToTransfer)
-                ActionButton(icon = Icons.Outlined.QrCodeScanner, label = "Scan QR", onClick = { /* Scan */ })
-                ActionButton(icon = Icons.Outlined.QrCodeScanner, label = "My QR", onClick = { /* Scan */ })
-
+                ActionButton(icon = AutoMirrored.Filled.Send, label = "Send", onClick = onNavigateToTransfer)
+                ActionButton(icon = Icons.Default.VerticalAlignBottom, label = "Request", onClick = onNavigateToRequest)
+                ActionButton(icon = Icons.Outlined.QrCodeScanner, label = "Scan QR", onClick = onNavigateToScan)
+                ActionButton(icon = Icons.Default.QrCode, label = "My QR", onClick = onNavigateToMyQR)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -257,7 +257,7 @@ fun EmptyTransactionsState() {
         ){
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ReceiptLong, null, Modifier.size(40.dp), MaterialTheme.colorScheme.onSurfaceVariant
+                    AutoMirrored.Filled.ReceiptLong, null, Modifier.size(40.dp), MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

@@ -71,7 +71,7 @@ class WalletViewModelTest {
     }
 
     @Test
-    fun `sendMoney updates status to Success when repository succeeds`() = runTest {
+    fun `transferMoney updates status to Success when repository succeeds`() = runTest {
         val phone = "1234567890"
         val amount = 50.0
         val note = "Test note"
@@ -81,10 +81,10 @@ class WalletViewModelTest {
         viewModel.refresh()
         advanceUntilIdle()
 
-        coEvery { repository.sendMoney(phone, amount, note) } returns true
+        coEvery { repository.transferMoney(phone, amount, note) } returns true
         
         var successResult: Boolean? = null
-        viewModel.sendMoney(phone, amount, note) { successResult = it }
+        viewModel.transferMoney(phone, amount, note) { successResult = it }
         
         // Removed assertion for Loading state since it might be too fast or already bypassed
         
@@ -95,7 +95,7 @@ class WalletViewModelTest {
     }
 
     @Test
-    fun `sendMoney updates status to Error when balance is insufficient`() = runTest {
+    fun `transferMoney updates status to Error when balance is insufficient`() = runTest {
         val phone = "1234567890"
         val amount = 150.0
         
@@ -105,7 +105,7 @@ class WalletViewModelTest {
         advanceUntilIdle()
 
         var successResult: Boolean? = null
-        viewModel.sendMoney(phone, amount, null) { successResult = it }
+        viewModel.transferMoney(phone, amount, null) { successResult = it }
         
         advanceUntilIdle()
         

@@ -5,6 +5,7 @@ import (
 
 	"digital_wallet_api/internal/dto"
 	"digital_wallet_api/internal/models"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -67,9 +68,15 @@ func (r *Repository) CreateWallet(wallet *models.Wallet) error {
 	return r.db.Create(wallet).Error
 }
 
-func (r *Repository) GetWalletByUserID(userID uuid.UUID) (*models.Wallet, error) {
+func (r *Repository) GetWalletByWalletID(walletID uuid.UUID) (*models.Wallet, error) {
 	var wallet models.Wallet
-	err := r.db.First(&wallet, "user_id = ?", userID).Error
+	err := r.db.First(&wallet, "id = ?", walletID).Error
+	return &wallet, err
+}
+
+func (r *Repository) GetWalletWithUserByWalletID(walletID uuid.UUID) (*models.Wallet, error) {
+	var wallet models.Wallet
+	err := r.db.Preload("User").First(&wallet, "id = ?", walletID).Error
 	return &wallet, err
 }
 
@@ -168,4 +175,18 @@ func (r *Repository) RevokeUserRefreshTokens(userID uuid.UUID) error {
 
 func (r *Repository) CreateAuditLog(log *models.AuditLog) error {
 	return r.db.Create(log).Error
+}
+
+func (r *Repository) CreateQRToken(token *models.QRToken) error {
+	return r.db.Create(token).Error
+}
+
+func (r *Repository) FindQRTokenByToken(tokenStr string) (*models.QRToken, error) {
+	var token models.QRToken
+	err := r.db.First(&token, "token = ?", tokenStr).Error
+	return &token, err
+}
+
+func (r *Repository) MarkQRTokenUsed(id uuid.UUID) error {
+	return r.db.Model(&models.QRToken{}).Where("id = ?", id).Update("is_used", true).Error
 }

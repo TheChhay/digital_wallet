@@ -108,6 +108,22 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS qr_tokens (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token       TEXT UNIQUE NOT NULL,
+    wallet_id   UUID NOT NULL,
+    amount      BIGINT,
+    currency    VARCHAR(10),
+    is_used     BOOLEAN DEFAULT FALSE,
+    expires_at  TIMESTAMP NOT NULL,
+    created_at  TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_qr_tokens_wallet ON qr_tokens(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_qr_tokens_expires ON qr_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_qr_tokens_used ON qr_tokens(is_used);
+
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_created ON audit_logs(actor_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity, entity_id);
 
@@ -118,3 +134,4 @@ DROP TABLE IF EXISTS kyc_verifications;
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS wallets;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS qr_tokens;

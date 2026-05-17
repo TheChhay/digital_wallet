@@ -115,3 +115,14 @@ type AuditLog struct {
 	UserAgent string     `gorm:"type:text" json:"user_agent"`
 	Metadata  string     `gorm:"type:jsonb;default:'{}'" json:"metadata"`
 }
+
+type QRToken struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	Token     string    `gorm:"type:text;uniqueIndex;not null" json:"token"`
+	WalletID  uuid.UUID `gorm:"type:uuid;not null;index" json:"wallet_id"`
+	Amount    float64   `gorm:"type:numeric(18,2)" json:"amount"`
+	Currency  string    `gorm:"type:varchar(10)" json:"currency"`
+	IsUsed    bool      `gorm:"default:false;index" json:"is_used"`
+	ExpiresAt time.Time `gorm:"not null;index" json:"expires_at"`
+	CreatedAt time.Time `gorm:"default:now()" json:"created_at"`
+}

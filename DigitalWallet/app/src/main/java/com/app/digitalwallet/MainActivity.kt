@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -24,9 +25,14 @@ import com.app.digitalwallet.ui.theme.ZenBlue
 import com.app.digitalwallet.ui.theme.ZenGray
 import com.app.digitalwallet.ui.theme.ZenPrimary
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.digitalwallet.viewmodel.AuthViewModel
 import com.app.digitalwallet.viewmodel.WalletViewModel
+import com.app.digitalwallet.viewmodel.WalletUiState
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -45,15 +51,17 @@ import com.app.digitalwallet.ui.screens.TransactionDetailScreen
 import com.app.digitalwallet.ui.screens.TransferScreen
 import com.app.digitalwallet.ui.screens.TransferSuccessScreen
 import com.app.digitalwallet.ui.screens.WalletScreen
+import com.app.digitalwallet.ui.screens.StaticQRScreen
+import com.app.digitalwallet.ui.screens.DynamicQRScreen
+import com.app.digitalwallet.ui.screens.CameraQRScannerScreen
+import com.app.digitalwallet.viewmodel.QRViewModel
 import com.app.digitalwallet.ui.theme.DigitalWalletTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Initialize networking
-        com.app.digitalwallet.api.RetrofitClient.init(this)
-
         enableEdgeToEdge()
         setContent {
             DigitalWalletTheme {
@@ -63,6 +71,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
@@ -80,7 +89,17 @@ fun MainScreen() {
     // Logic: Only show bottom bar if we are on one of the 4 main tab routes
     val showBottomBar = items.any { it.route == currentDestination?.route }
     
-    val walletViewModel: WalletViewModel = viewModel()
+    val walletViewModel: WalletViewModel = hiltViewModel()
+    val qrViewModel: QRViewModel = hiltViewModel()
+    val authViewModel: AuthViewModel = hiltViewModel()
+
+    LaunchedEffect(Unit) {
+        authViewModel.logoutEvent.collect {
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -149,6 +168,7 @@ fun MainScreen() {
             }
             composable(Screen.Login.route) {
                 LoginScreen(
+                    viewModel = authViewModel,
                     onLoginSuccess = {
                         walletViewModel.refresh()
                         navController.navigate(Screen.Home.route) {
@@ -162,6 +182,7 @@ fun MainScreen() {
             }
             composable(Screen.Register.route) {
                 com.app.digitalwallet.ui.screens.RegisterScreen(
+                    viewModel = authViewModel,
                     onRegisterSuccess = {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Register.route) { inclusive = true }
@@ -175,10 +196,14 @@ fun MainScreen() {
             composable(Screen.Home.route) { 
                 HomeScreen(
                     viewModel = walletViewModel,
-                    onNavigateToDetail = { transactionId -> 
-                        navController.navigate(Screen.TransactionDetail.createRoute(transactionId)) 
-                    },
                     onNavigateToTransfer = { navController.navigate(Screen.Transfer.route) },
+                    onNavigateToScan = { navController.navigate(Screen.QRScanner.route) },
+                    onNavigateToMyQR = { address -> 
+                        navController.navigate(Screen.StaticQR.createRoute(address)) 
+                    },
+                    onNavigateToRequest = {
+                        navController.navigate(Screen.DynamicQR.route)
+                    },
                     onNavigateToAllTransactions = { navController.navigate(Screen.History.route) }
                 ) 
             }
@@ -199,6 +224,7 @@ fun MainScreen() {
             }
             composable(Screen.Transfer.route) {
                 TransferScreen(
+                    qrViewModel = qrViewModel,
                     viewModel = walletViewModel,
                     onBack = { navController.popBackStack() },
                     onNavigateToSuccess = { amount, recipient ->
@@ -249,6 +275,52 @@ fun MainScreen() {
                 IdentityVerificationScreen(
                     onBack = { navController.popBackStack() },
                     onProceed = { navController.popBackStack() }
+                )
+            }
+            
+            // QR related screens
+            composable(
+                route = Screen.StaticQR.route,
+                arguments = listOf(
+                    androidx.navigation.navArgument("address") { type = androidx.navigation.NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val address = backStackEntry.arguments?.getString("address") ?: ""
+                StaticQRScreen(
+                    viewModel = qrViewModel,
+                    walletAddress = address,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.DynamicQR.route) {
+                val walletState by walletViewModel.uiState.collectAsState()
+                val walletId = (walletState as? WalletUiState.Success)?.walletInfo?.walletId ?: ""
+                
+                DynamicQRScreen(
+                    viewModel = qrViewModel,
+                    walletId = walletId,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.QRScanner.route) {
+                CameraQRScannerScreen(
+                    viewModel = qrViewModel,
+                    walletViewModel = walletViewModel,
+                    onNavigateToPayment = { request ->
+                        qrViewModel.setPendingPayment(
+                            com.app.digitalwallet.api.dto.ValidateTokenResponse(
+                                isValid = true,
+                                message = null,
+                                recipientName = request.fullName,
+                                recipientPhone = request.phone,
+                                recipientId = request.id,
+                                amount = null,
+                                currency = "USD"
+                            )
+                        )
+                        navController.navigate(Screen.Transfer.route)
+                    },
+                    onBack = { navController.popBackStack() }
                 )
             }
         }

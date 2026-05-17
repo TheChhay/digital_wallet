@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"digital_wallet_api/internal/config"
@@ -15,6 +14,7 @@ import (
 	"digital_wallet_api/internal/utils"
 
 	"github.com/google/uuid"
+	qrcode "github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 )
 
@@ -37,6 +37,10 @@ type Service struct {
 func New(repo *repositories.Repository, cfg *config.Config) *Service {
 	return &Service{repo: repo, cfg: cfg}
 }
+
+// ─────────────────────────────────────────────
+// Auth
+// ─────────────────────────────────────────────
 
 func (s *Service) Register(req dto.RegisterRequest) (*dto.AuthResponse, error) {
 	passwordHash, err := utils.HashPassword(req.Password)
@@ -131,6 +135,10 @@ func (s *Service) Logout(userID uuid.UUID) error {
 	return s.repo.RevokeUserRefreshTokens(userID)
 }
 
+// ─────────────────────────────────────────────
+// User / Profile
+// ─────────────────────────────────────────────
+
 func (s *Service) GetProfile(userID uuid.UUID) (*dto.UserResponse, error) {
 	user, err := s.repo.FindUserByID(userID)
 	if err != nil {
@@ -152,6 +160,34 @@ func (s *Service) UpdateProfileImage(userID uuid.UUID, imageURL string) (*dto.Us
 	resp := mapUser(user)
 	return &resp, nil
 }
+
+func (s *Service) SetAccountStatus(userID uuid.UUID, status string) (*dto.UserResponse, error) {
+	user, err := s.repo.FindUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	user.Status = models.UserStatus(status)
+	if err := s.repo.UpdateUser(user); err != nil {
+		return nil, err
+	}
+	resp := mapUser(user)
+	return &resp, nil
+}
+
+func (s *Service) ListUsers(f dto.TransactionFilter) (*dto.CursorResponse[dto.UserResponse], error) {
+	if err := normalizeCursor(&f); err != nil {
+		return nil, err
+	}
+	items, err := s.repo.ListUsers(f)
+	if err != nil {
+		return nil, err
+	}
+	return paginateUsers(items, f.Limit), nil
+}
+
+// ─────────────────────────────────────────────
+// KYC
+// ─────────────────────────────────────────────
 
 func (s *Service) SubmitKYC(userID uuid.UUID, req dto.KYCSubmitRequest) (*models.KYCVerification, error) {
 	dob, err := time.Parse("2006-01-02", req.DOB)
@@ -189,19 +225,37 @@ func (s *Service) ReviewKYC(adminID, userID uuid.UUID, req dto.KYCReviewRequest)
 	return kyc, nil
 }
 
-func (s *Service) Wallet(userID uuid.UUID) (*models.Wallet, error) {
-	return s.repo.GetWalletByUserID(userID)
-}
+// ─────────────────────────────────────────────
+// Wallet
+// ─────────────────────────────────────────────
 
-func (s *Service) LookupRecipient(phone string) (*dto.RecipientLookupResponse, error) {
-	user, err := s.repo.FindUserByPhone(phone)
+func (s *Service) Wallet(userID uuid.UUID) (*models.Wallet, error) {
+	wallet, err := s.repo.GetWalletForUpdate(userID)
 	if err != nil {
 		return nil, err
 	}
-	return &dto.RecipientLookupResponse{
-		FullName: fmt.Sprintf("%s %s", user.FirstName, user.LastName),
-	}, nil
+	return wallet, nil
 }
+
+func (s *Service) GetUserInfoByWalletID(walletID uuid.UUID) (*dto.UserInfoResponse, error) {
+	wallet, err := s.repo.GetWalletWithUserByWalletID(walletID)
+	if err != nil {
+		return nil, err
+	}
+	if wallet.User == nil {
+		return nil, errors.New("user not found")
+	}
+	resp := &dto.UserInfoResponse{
+		ID:       wallet.User.ID,
+		FullName: fmt.Sprintf("%s %s", wallet.User.FirstName, wallet.User.LastName),
+		Phone:    wallet.User.Phone,
+	}
+	return resp, nil
+}
+
+// ─────────────────────────────────────────────
+// Transactions
+// ─────────────────────────────────────────────
 
 func (s *Service) Deposit(userID uuid.UUID, req dto.MoneyRequest) (*models.Transaction, error) {
 	return s.moneyMovement(nil, &userID, models.TransactionDeposit, req.AmountCents, req.Description)
@@ -231,6 +285,7 @@ func (s *Service) Transfer(senderID uuid.UUID, req dto.TransferRequest) (*models
 	var txn *models.Transaction
 	err = s.repo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.repo.WithTx(tx)
+		// Lock wallets in consistent UUID order to prevent deadlocks
 		first, second := senderID, receiver.ID
 		if first.String() > second.String() {
 			first, second = second, first
@@ -301,7 +356,10 @@ func (s *Service) moneyMovement(senderID, receiverID *uuid.UUID, txType models.T
 		if err := txRepo.UpdateWallet(wallet); err != nil {
 			return err
 		}
-		prefix := map[models.TransactionType]string{models.TransactionDeposit: "DEP", models.TransactionWithdraw: "WDR"}[txType]
+		prefix := map[models.TransactionType]string{
+			models.TransactionDeposit:  "DEP",
+			models.TransactionWithdraw: "WDR",
+		}[txType]
 		txn = &models.Transaction{
 			Reference:   utils.NewReference(prefix),
 			Type:        txType,
@@ -316,7 +374,7 @@ func (s *Service) moneyMovement(senderID, receiverID *uuid.UUID, txType models.T
 	return txn, err
 }
 
-func (s *Service) UserTransactions(userID uuid.UUID, f dto.TransactionFilter) (*dto.CursorResponse, error) {
+func (s *Service) UserTransactions(userID uuid.UUID, f dto.TransactionFilter) (*dto.CursorResponse[dto.TransactionResponse], error) {
 	if err := normalizeCursor(&f); err != nil {
 		return nil, err
 	}
@@ -324,16 +382,14 @@ func (s *Service) UserTransactions(userID uuid.UUID, f dto.TransactionFilter) (*
 	if err != nil {
 		return nil, err
 	}
-
 	mappedItems := make([]dto.TransactionResponse, len(items))
 	for i, item := range items {
-		mappedItems[i] = mapTransaction(item)
+		mappedItems[i] = mapTransaction(item, userID)
 	}
-
 	return paginateTransactions(mappedItems, f.Limit), nil
 }
 
-func (s *Service) AllTransactions(f dto.TransactionFilter) (*dto.CursorResponse, error) {
+func (s *Service) AllTransactions(f dto.TransactionFilter) (*dto.CursorResponse[dto.TransactionResponse], error) {
 	if err := normalizeCursor(&f); err != nil {
 		return nil, err
 	}
@@ -341,44 +397,133 @@ func (s *Service) AllTransactions(f dto.TransactionFilter) (*dto.CursorResponse,
 	if err != nil {
 		return nil, err
 	}
-
 	mappedItems := make([]dto.TransactionResponse, len(items))
 	for i, item := range items {
-		mappedItems[i] = mapTransaction(item)
+		// Admin view: no viewer context, IsPositive left nil
+		mappedItems[i] = mapTransaction(item, uuid.Nil)
 	}
-
 	return paginateTransactions(mappedItems, f.Limit), nil
 }
 
-func (s *Service) ListUsers(f dto.TransactionFilter) (*dto.CursorResponse, error) {
-	if err := normalizeCursor(&f); err != nil {
-		return nil, err
-	}
-	items, err := s.repo.ListUsers(f)
+// ─────────────────────────────────────────────
+// QR — Dynamic
+// ─────────────────────────────────────────────
+
+// GenerateQR creates a short-lived token, stores it in the DB,
+// and returns a real base64-encoded QR PNG image.
+func (s *Service) GenerateQR(req dto.GenerateQRRequest) (*dto.GenerateQRResponse, error) {
+	walletID, err := uuid.Parse(req.WalletID)
 	if err != nil {
+		return nil, errors.New("invalid wallet id")
+	}
+
+	// FIX #2: handle error from RandomToken
+	token, err := utils.RandomToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	expiresAt := time.Now().Add(60 * time.Second)
+
+	qrToken := &models.QRToken{
+		Token:     token,
+		WalletID:  walletID,
+		Amount:    req.Amount,
+		Currency:  req.Currency,
+		ExpiresAt: expiresAt,
+	}
+	if err := s.repo.CreateQRToken(qrToken); err != nil {
 		return nil, err
 	}
-	return paginateUsers(items, f.Limit), nil
+
+	// FIX #1: generate an actual QR image, not just a deep link string
+	payload := fmt.Sprintf("walletapp://pay?token=%s", token)
+	pngBytes, err := qrcode.Encode(payload, qrcode.Medium, 256)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode QR image: %w", err)
+	}
+	base64Image := base64.StdEncoding.EncodeToString(pngBytes)
+
+	return &dto.GenerateQRResponse{
+		QRImageBase64: base64Image,
+		Token:         token,
+		ExpiresAt:     expiresAt.Unix(),
+	}, nil
 }
 
-func (s *Service) SetAccountStatus(userID uuid.UUID, status string) (*dto.UserResponse, error) {
-	user, err := s.repo.FindUserByID(userID)
+// ValidateQR checks and consumes a dynamic QR token.
+func (s *Service) ValidateQR(req dto.ValidateTokenRequest) (*dto.ValidateTokenResponse, error) {
+	qrToken, err := s.repo.FindQRTokenByToken(req.Token)
+	if err != nil {
+		return &dto.ValidateTokenResponse{IsValid: false, Message: "Token not found"}, nil
+	}
+	if qrToken.IsUsed {
+		return &dto.ValidateTokenResponse{IsValid: false, Message: "Token already used"}, nil
+	}
+	if time.Now().After(qrToken.ExpiresAt) {
+		return &dto.ValidateTokenResponse{IsValid: false, Message: "Token expired"}, nil
+	}
+
+	// FIX #3: mark token as used before returning
+	qrToken.IsUsed = true
+	if err := s.repo.MarkQRTokenUsed(qrToken.ID); err != nil {
+		return nil, fmt.Errorf("failed to consume QR token: %w", err)
+	}
+
+	var w models.Wallet
+	if err := s.repo.DB().First(&w, "id = ?", qrToken.WalletID).Error; err != nil {
+		return nil, err
+	}
+	user, err := s.repo.FindUserByID(w.UserID)
 	if err != nil {
 		return nil, err
 	}
-	user.Status = models.UserStatus(status)
-	if err := s.repo.UpdateUser(user); err != nil {
-		return nil, err
-	}
-	resp := mapUser(user)
-	return &resp, nil
+
+	return &dto.ValidateTokenResponse{
+		IsValid:        true,
+		RecipientName:  fmt.Sprintf("%s %s", user.FirstName, user.LastName),
+		RecipientPhone: user.Phone,
+		Amount:         qrToken.Amount,
+		Currency:       qrToken.Currency,
+	}, nil
 }
+
+// ─────────────────────────────────────────────
+// QR — Static (FIX #4: new method)
+// ─────────────────────────────────────────────
+
+// GenerateStaticQR encodes a wallet address directly into a QR image
+// with no expiry and no DB record — safe for "Receive" screens.
+func (s *Service) GenerateStaticQR(walletID string) (*dto.StaticQRResponse, error) {
+	if _, err := uuid.Parse(walletID); err != nil {
+		return nil, errors.New("invalid wallet id")
+	}
+
+	payload := fmt.Sprintf("walletapp://address?wallet=%s", walletID)
+	pngBytes, err := qrcode.Encode(payload, qrcode.Medium, 256)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode static QR image: %w", err)
+	}
+
+	return &dto.StaticQRResponse{
+		QRImageBase64: base64.StdEncoding.EncodeToString(pngBytes),
+		WalletID:      walletID,
+	}, nil
+}
+
+// ─────────────────────────────────────────────
+// Audit
+// ─────────────────────────────────────────────
 
 func (s *Service) Audit(actorID *uuid.UUID, action, entity string, entityID *uuid.UUID, ip, ua string) {
 	_ = s.repo.CreateAuditLog(&models.AuditLog{
 		ActorID: actorID, Action: action, Entity: entity, EntityID: entityID, IPAddress: ip, UserAgent: ua, Metadata: "{}",
 	})
 }
+
+// ─────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────
 
 func (s *Service) issueTokens(user *models.User) (*dto.AuthResponse, error) {
 	access, err := utils.GenerateAccessToken(s.cfg.JWTSecret, user.ID, string(user.Role), s.cfg.AccessTokenTTL)
@@ -412,7 +557,8 @@ func mapUser(user *models.User) dto.UserResponse {
 	}
 }
 
-func mapTransaction(txn models.Transaction) dto.TransactionResponse {
+// FIX #6: accepts viewerID so IsPositive is correct for transfers
+func mapTransaction(txn models.Transaction, viewerID uuid.UUID) dto.TransactionResponse {
 	resp := dto.TransactionResponse{
 		ID:          txn.ID,
 		Reference:   txn.Reference,
@@ -425,8 +571,8 @@ func mapTransaction(txn models.Transaction) dto.TransactionResponse {
 		ReceiverID:  txn.ReceiverID,
 	}
 
-	// Calculate full name: FirstName + LastName
-	if txn.Type == models.TransactionTransfer {
+	switch txn.Type {
+	case models.TransactionTransfer:
 		if txn.Receiver != nil {
 			resp.ReceiverName = fmt.Sprintf("%s %s", txn.Receiver.FirstName, txn.Receiver.LastName)
 			resp.ReceiverPhone = txn.Receiver.Phone
@@ -434,15 +580,18 @@ func mapTransaction(txn models.Transaction) dto.TransactionResponse {
 		if txn.Sender != nil {
 			resp.MerchantName = fmt.Sprintf("%s %s", txn.Sender.FirstName, txn.Sender.LastName)
 		}
-		// Typically a transfer sent is negative, received is positive.
-		// For the purpose of the API response, we might need a context of WHO is asking,
-		// but since this is a generic map, we'll let the client decide or handle it elsewhere.
-		// However, for simplicity if SenderID is present and ReceiverID is present, it's a transfer.
-	} else if txn.Type == models.TransactionDeposit {
+		// Positive if the viewer is the receiver
+		if viewerID != uuid.Nil && txn.ReceiverID != nil {
+			isPos := *txn.ReceiverID == viewerID
+			resp.IsPositive = &isPos
+		}
+
+	case models.TransactionDeposit:
 		resp.MerchantName = "Cash Deposit"
 		isPos := true
 		resp.IsPositive = &isPos
-	} else if txn.Type == models.TransactionWithdraw {
+
+	case models.TransactionWithdraw:
 		resp.MerchantName = "Cash Withdrawal"
 		isPos := false
 		resp.IsPositive = &isPos
@@ -467,12 +616,13 @@ func normalizeCursor(f *dto.TransactionFilter) error {
 	return nil
 }
 
-func paginateUsers(items []models.User, limit int) *dto.CursorResponse {
+// FIX #5: typed instead of reflect-based
+func paginateTransactions(items []dto.TransactionResponse, limit int) *dto.CursorResponse[dto.TransactionResponse] {
 	hasMore := len(items) > limit
 	if hasMore {
 		items = items[:limit]
 	}
-	resp := &dto.CursorResponse{Items: items, Limit: limit, HasMore: hasMore}
+	resp := &dto.CursorResponse[dto.TransactionResponse]{Items: items, Limit: limit, HasMore: hasMore}
 	if hasMore && len(items) > 0 {
 		last := items[len(items)-1]
 		resp.NextCursor = encodeCursor(last.CreatedAt, last.ID)
@@ -480,30 +630,19 @@ func paginateUsers(items []models.User, limit int) *dto.CursorResponse {
 	return resp
 }
 
-func paginateTransactions(items interface{}, limit int) *dto.CursorResponse {
-	val := reflect.ValueOf(items)
-	if val.Kind() != reflect.Slice {
-		return &dto.CursorResponse{Items: items, Limit: limit}
-	}
-
-	count := val.Len()
-	hasMore := count > limit
-	displayItems := items
+func paginateUsers(items []models.User, limit int) *dto.CursorResponse[dto.UserResponse] {
+	hasMore := len(items) > limit
 	if hasMore {
-		displayItems = val.Slice(0, limit).Interface()
+		items = items[:limit]
 	}
-
-	resp := &dto.CursorResponse{Items: displayItems, Limit: limit, HasMore: hasMore}
-
-	if hasMore && limit > 0 {
-		last := val.Index(limit - 1).Interface()
-		if t, ok := last.(dto.TransactionResponse); ok {
-			resp.NextCursor = encodeCursor(t.CreatedAt, t.ID)
-		} else if u, ok := last.(models.User); ok {
-			resp.NextCursor = encodeCursor(u.CreatedAt, u.ID)
-		} else if txn, ok := last.(models.Transaction); ok {
-			resp.NextCursor = encodeCursor(txn.CreatedAt, txn.ID)
-		}
+	mapped := make([]dto.UserResponse, len(items))
+	for i, item := range items {
+		mapped[i] = mapUser(&item)
+	}
+	resp := &dto.CursorResponse[dto.UserResponse]{Items: mapped, Limit: limit, HasMore: hasMore}
+	if hasMore && len(items) > 0 {
+		last := items[len(items)-1]
+		resp.NextCursor = encodeCursor(last.CreatedAt, last.ID)
 	}
 	return resp
 }

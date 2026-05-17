@@ -46,7 +46,7 @@ func Setup(cfg *config.Config, logger *zap.Logger, h *handlers.Handler) *gin.Eng
 
 		wallet := v1.Group("/wallet", middleware.Auth(cfg))
 		wallet.GET("", h.Wallet)
-		wallet.GET("/recipient-lookup", h.LookupRecipient)
+		wallet.GET("/get-userinfo-by-wallet-id", h.GetUserInfoByWalletID)
 		wallet.POST("/deposit", h.Deposit)
 		wallet.POST("/withdraw", h.Withdraw)
 		wallet.POST("/transfer", h.Transfer)
@@ -59,6 +59,11 @@ func Setup(cfg *config.Config, logger *zap.Logger, h *handlers.Handler) *gin.Eng
 		admin.GET("/transactions", h.AdminTransactions)
 		admin.PUT("/users/:userID/kyc", h.ReviewKYC)
 		admin.PUT("/users/:userID/status", h.SetAccountStatus)
+
+		qr := v1.Group("/qr")
+		qr.POST("/generate", h.GenerateQR)
+		qr.POST("/validate", h.ValidateQR)
+		qr.GET("/static", h.GetStaticQR)
 	}
 	return r
 }

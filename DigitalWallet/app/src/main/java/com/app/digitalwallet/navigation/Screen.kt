@@ -30,4 +30,12 @@ sealed class Screen(val route: String, val label: String? = null, val icon: Imag
     object Security : Screen("security")
     object HelpCenter : Screen("help_center")
     object IdentityVerification : Screen("identity_verification")
+    
+    // QR related screens
+    object StaticQR : Screen("static_qr/{address}") {
+        fun createRoute(address: String) = "static_qr/$address"
+    }
+    object DynamicQR : Screen("dynamic_qr")
+    object QRScanner : Screen("qr_scanner")
+
 }
