@@ -208,7 +208,12 @@ fun MainScreen() {
                     onNavigateToProfile = { navController.navigate(Screen.Profile.route) }
                 ) 
             }
-            composable(Screen.Wallet.route) { WalletScreen(viewModel = walletViewModel) }
+            composable(Screen.Wallet.route) { 
+                WalletScreen(
+                    viewModel = walletViewModel,
+                    authViewModel = authViewModel
+                ) 
+            }
             composable(Screen.History.route) { HistoryScreen(viewModel = walletViewModel) }
             composable(Screen.Profile.route) { ProfileScreen(navController = navController) }
             composable(
@@ -344,7 +349,7 @@ fun PlaceholderScreen(title: String, onBack: () -> Unit) {
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = androidx.compose.ui.Alignment.Center) {
-            Text("$title Screen Content")
+            Text("$title coming soon...")
         }
     }
 }

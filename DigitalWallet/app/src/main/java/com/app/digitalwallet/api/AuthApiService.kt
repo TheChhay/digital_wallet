@@ -29,5 +29,7 @@ interface AuthApiService {
     @GET("me")
     suspend fun getMe(): APIResponse<UserResponse>
 
+    @PUT("me")
+    suspend fun updateProfile(@Body request: UserProfileRequest): APIResponse<UserResponse>
 
 }

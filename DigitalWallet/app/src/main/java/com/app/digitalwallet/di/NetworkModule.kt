@@ -34,7 +34,9 @@ object NetworkModule {
     /**
      * Base host URL for images and other non-API resources
      */
-    const val BASE_HOST = "http://10.90.163.174:8080"
+//    const val BASE_HOST = "http://10.90.163.126:8080"
+    //emulator
+    const val BASE_HOST = "http://10.0.2.2:8080"
     private const val BASE_URL = "$BASE_HOST/api/v1/"
 
     private val json = Json {

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.digitalwallet.api.dto.LoginRequest
 import com.app.digitalwallet.api.dto.RegisterRequest
+import com.app.digitalwallet.api.dto.UserProfileRequest
 import com.app.digitalwallet.api.dto.UserResponse
 import com.app.digitalwallet.auth.SessionManager
 import com.app.digitalwallet.data.AuthRepository
@@ -33,6 +34,9 @@ class AuthViewModel @Inject constructor(
     var uploadProfileImageUiState by mutableStateOf(AuthUiState())
         private set
 
+    var updateProfileUiState by mutableStateOf(AuthUiState())  // ✅ fixed name + private set
+        private set
+
     var userProfile by mutableStateOf<UserResponse?>(null)
         private set
 
@@ -42,9 +46,12 @@ class AuthViewModel @Inject constructor(
                 val response = repository.getMe()
                 if (response.success) {
                     userProfile = response.data
+                } else {
+                    // optional: log or surface error if needed
                 }
             } catch (e: Exception) {
-                // Handle error
+                // getMe is usually a background refresh, so silent is acceptable
+                // but at minimum log it: Log.e("AuthVM", "getMe failed", e)
             }
         }
     }
@@ -62,7 +69,10 @@ class AuthViewModel @Inject constructor(
                     loginUiState = loginUiState.copy(isLoading = false, error = response.message)
                 }
             } catch (e: Exception) {
-                loginUiState = loginUiState.copy(isLoading = false, error = e.localizedMessage ?: "An error occurred")
+                loginUiState = loginUiState.copy(
+                    isLoading = false,
+                    error = e.localizedMessage ?: "An error occurred"
+                )
             }
         }
     }
@@ -80,7 +90,10 @@ class AuthViewModel @Inject constructor(
                     registerUiState = registerUiState.copy(isLoading = false, error = response.message)
                 }
             } catch (e: Exception) {
-                registerUiState = registerUiState.copy(isLoading = false, error = e.localizedMessage ?: "An error occurred")
+                registerUiState = registerUiState.copy(
+                    isLoading = false,
+                    error = e.localizedMessage ?: "An error occurred"
+                )
             }
         }
     }
@@ -95,10 +108,40 @@ class AuthViewModel @Inject constructor(
                     uploadProfileImageUiState = uploadProfileImageUiState.copy(isLoading = false)
                     onSuccess()
                 } else {
-                    uploadProfileImageUiState = uploadProfileImageUiState.copy(isLoading = false, error = response.message)
+                    uploadProfileImageUiState = uploadProfileImageUiState.copy(
+                        isLoading = false,
+                        error = response.message
+                    )
                 }
             } catch (e: Exception) {
-                uploadProfileImageUiState = uploadProfileImageUiState.copy(isLoading = false, error = e.localizedMessage ?: "An error occurred")
+                uploadProfileImageUiState = uploadProfileImageUiState.copy(
+                    isLoading = false,
+                    error = e.localizedMessage ?: "An error occurred"
+                )
+            }
+        }
+    }
+
+    fun updateProfile(request: UserProfileRequest, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            updateProfileUiState = updateProfileUiState.copy(isLoading = true, error = null)
+            try {
+                val response = repository.updateProfile(request)
+                if (response.success && response.data != null) {
+                    userProfile = response.data          // ✅ already UserResponse?, no cast needed
+                    updateProfileUiState = updateProfileUiState.copy(isLoading = false)
+                    onSuccess()
+                } else {
+                    updateProfileUiState = updateProfileUiState.copy(
+                        isLoading = false,
+                        error = response.message ?: "Update failed"  // ✅ user sees the error
+                    )
+                }
+            } catch (e: Exception) {
+                updateProfileUiState = updateProfileUiState.copy(
+                    isLoading = false,
+                    error = e.localizedMessage ?: "An error occurred"  // ✅ no silent failure
+                )
             }
         }
     }
@@ -109,6 +152,10 @@ class AuthViewModel @Inject constructor(
 
     fun clearRegisterError() {
         registerUiState = registerUiState.copy(error = null)
+    }
+
+    fun clearUpdateProfileError() {
+        updateProfileUiState = updateProfileUiState.copy(error = null)
     }
 
     fun logout() {

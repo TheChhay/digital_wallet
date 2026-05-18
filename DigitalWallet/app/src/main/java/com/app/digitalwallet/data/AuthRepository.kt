@@ -1,11 +1,9 @@
 package com.app.digitalwallet.data
 
-import android.content.Context
 import com.app.digitalwallet.api.AuthApiService
 import com.app.digitalwallet.api.dto.*
 import com.app.digitalwallet.auth.TokenManager
 import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,6 +35,10 @@ class AuthRepository @Inject constructor(
 
     suspend fun getMe(): APIResponse<UserResponse> {
         return authApi.getMe()
+    }
+
+    suspend fun updateProfile(request: UserProfileRequest): APIResponse<UserResponse> {
+        return authApi.updateProfile(request)
     }
 
     fun logout() {

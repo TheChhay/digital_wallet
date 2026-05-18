@@ -72,6 +72,12 @@ type UserInfoResponse struct {
 	Phone    string    `json:"phone"`
 }
 
+type UpdateProfileRequest struct {
+	Phone     string `json:"phone"      binding:"omitempty,min=7,max=32"`
+	FirstName string `json:"first_name" binding:"required,min=1,max=80"`
+	LastName  string `json:"last_name"  binding:"required,min=1,max=80"`
+}
+
 type AccountStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=active frozen"`
 }

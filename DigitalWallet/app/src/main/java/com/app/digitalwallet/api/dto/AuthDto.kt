@@ -48,3 +48,10 @@ data class UserResponse(
     @SerialName("profile_image_url") val profileImageUrl: String? = null
 )
 
+@Serializable
+data class UserProfileRequest (
+    val phone: String? = null,
+    @SerialName("first_name") val firstName: String? = null,
+    @SerialName("last_name") val lastName: String? = null)
+
+

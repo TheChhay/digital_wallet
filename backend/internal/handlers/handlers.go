@@ -73,6 +73,15 @@ func (h *Handler) Profile(c *gin.Context) {
 	respond(c, http.StatusOK, "Success", resp, err)
 }
 
+func (h *Handler) UpdateProfile(c *gin.Context) {
+	var req dto.UpdateProfileRequest
+	if !bind(c, &req) {
+		return
+	}
+	resp, err := h.service.UpdateProfile(middleware.CurrentUserID(c), req)
+	respond(c, http.StatusOK, "Profile updated", resp, err)
+}
+
 func (h *Handler) UpdateProfileImage(c *gin.Context) {
 	if isMultipart(c) {
 		imageURL, ok := h.uploadImage(c, "image", "profile")

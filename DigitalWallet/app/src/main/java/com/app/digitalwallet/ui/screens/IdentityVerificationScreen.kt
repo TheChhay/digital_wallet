@@ -60,6 +60,7 @@ enum class KycStatus(val value: String) {
     PENDING("pending"),
     APPROVED("approved"),
     REJECTED("rejected"),
+    NOT_SUBMITTED("not_submitted"),
     UNKNOWN("unknown");
 
     companion object {
@@ -83,14 +84,17 @@ fun IdentityVerificationScreen(
 
     // If already submitted, show the status screen instead of the form
     if (uiState is KycUiState.Loaded) {
-        IdentityVerified(
-            status = KycStatus.from(uiState.data.status),
-            fullName = uiState.data.fullName,
-            rejectionReason = uiState.data.rejectionReason,
-            onBack = onBack,
-            onResubmit = { viewModel.resetKycState() }
-        )
-        return
+        val status = KycStatus.from(uiState.data.status)
+        if (status != KycStatus.NOT_SUBMITTED) {
+            IdentityVerified(
+                status = status,
+                fullName = uiState.data.fullName,
+                rejectionReason = uiState.data.rejectionReason,
+                onBack = onBack,
+                onResubmit = { viewModel.resetKycState() }
+            )
+            return
+        }
     }
 
     val idCardPicker = rememberLauncherForActivityResult(
@@ -474,6 +478,17 @@ fun IdentityVerified(
             badge = "REJECTED",
             badgeColor = colorScheme.error,
             badgeBg = colorScheme.errorContainer,
+            showResubmit = true
+        )
+        KycStatus.NOT_SUBMITTED -> StatusConfig(
+            icon = Icons.Outlined.Badge,
+            iconTint = colorScheme.primary,
+            iconBg = colorScheme.primaryContainer,
+            title = "Not Submitted",
+            subtitle = "You haven't submitted your identity verification documents yet.",
+            badge = "NOT SUBMITTED",
+            badgeColor = colorScheme.primary,
+            badgeBg = colorScheme.primaryContainer,
             showResubmit = true
         )
         KycStatus.UNKNOWN -> StatusConfig(

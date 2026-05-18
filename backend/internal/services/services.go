@@ -148,6 +148,24 @@ func (s *Service) GetProfile(userID uuid.UUID) (*dto.UserResponse, error) {
 	return &resp, nil
 }
 
+func (s *Service) UpdateProfile(userID uuid.UUID, req dto.UpdateProfileRequest) (*dto.UserResponse, error) {
+	user, err := s.repo.FindUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if req.Phone != "" {
+		user.Phone = req.Phone
+	}
+	user.FirstName = req.FirstName
+	user.LastName = req.LastName
+	if err := s.repo.UpdateUser(user); err != nil {
+		return nil, err
+	}
+	resp := mapUser(user)
+	return &resp, nil
+}
+
+
 func (s *Service) UpdateProfileImage(userID uuid.UUID, imageURL string) (*dto.UserResponse, error) {
 	user, err := s.repo.FindUserByID(userID)
 	if err != nil {
