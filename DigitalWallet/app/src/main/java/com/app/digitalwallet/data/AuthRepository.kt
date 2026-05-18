@@ -4,6 +4,8 @@ import android.content.Context
 import com.app.digitalwallet.api.AuthApiService
 import com.app.digitalwallet.api.dto.*
 import com.app.digitalwallet.auth.TokenManager
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,11 +31,15 @@ class AuthRepository @Inject constructor(
         return authApi.register(request)
     }
 
-    fun logout() {
-        tokenManager.clearTokens()
+    suspend fun updateProfileImage(image: MultipartBody.Part): APIResponse<UserResponse> {
+        return authApi.updateProfileImage(image)
     }
 
-    fun isLoggedIn(): Boolean {
-        return tokenManager.getAccessToken() != null
+    suspend fun getMe(): APIResponse<UserResponse> {
+        return authApi.getMe()
+    }
+
+    fun logout() {
+        tokenManager.clearTokens()
     }
 }

@@ -30,7 +30,9 @@ fun ZenTextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     minLines: Int = 1,
-    isOutlined: Boolean = false
+    isOutlined: Boolean = false,
+    readOnly: Boolean = false,
+    enabled: Boolean = true
 ) {
     Column(modifier = modifier) {
         if (label != null) {
@@ -53,6 +55,8 @@ fun ZenTextField(
                 leadingIcon = leadingIcon,
                 trailingIcon = trailingIcon,
                 visualTransformation = visualTransformation,
+                readOnly = readOnly,
+                enabled = enabled,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -75,6 +79,8 @@ fun ZenTextField(
                 leadingIcon = leadingIcon,
                 trailingIcon = trailingIcon,
                 visualTransformation = visualTransformation,
+                readOnly = readOnly,
+                enabled = enabled,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,

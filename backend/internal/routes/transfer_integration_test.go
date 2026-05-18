@@ -115,6 +115,56 @@ func TestReviewKYCFailsWithInvalidUUIDFormat(t *testing.T) {
 	assert.Equal(t, "Invalid user id", payload["message"])
 }
 
+func TestGetKYCReturnsNotSubmittedState(t *testing.T) {
+	router, cfg := setupTransferTest(t)
+	user := createTestUser(t, models.RoleUser, "+85590000007", 0)
+	token := accessToken(t, cfg, user.ID, models.RoleUser)
+
+	resp := performJSONRequest(router, http.MethodGet, "/api/v1/me/kyc", nil, token)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	var payload map[string]interface{}
+	assert.NoError(t, json.Unmarshal(resp.Body.Bytes(), &payload))
+	assert.Equal(t, true, payload["success"])
+
+	data := payload["data"].(map[string]interface{})
+	assert.Equal(t, false, data["submitted"])
+	assert.Equal(t, "not_submitted", data["status"])
+}
+
+func TestGetKYCReturnsSubmittedDetails(t *testing.T) {
+	router, cfg := setupTransferTest(t)
+	user := createTestUser(t, models.RoleUser, "+85590000008", 0)
+	token := accessToken(t, cfg, user.ID, models.RoleUser)
+
+	kyc := models.KYCVerification{
+		UserID:         user.ID,
+		FullName:       "Sophea Chan",
+		DOB:            time.Date(1998, 4, 3, 0, 0, 0, 0, time.UTC),
+		Address:        "123 Riverside Street",
+		IDCardImageURL: "https://example.com/id-card.jpg",
+		SelfieImageURL: "https://example.com/selfie.jpg",
+		Status:         models.KYCPending,
+	}
+	assert.NoError(t, testDB.Create(&kyc).Error)
+
+	resp := performJSONRequest(router, http.MethodGet, "/api/v1/me/kyc", nil, token)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	var payload map[string]interface{}
+	assert.NoError(t, json.Unmarshal(resp.Body.Bytes(), &payload))
+	assert.Equal(t, true, payload["success"])
+
+	data := payload["data"].(map[string]interface{})
+	assert.Equal(t, true, data["submitted"])
+	assert.Equal(t, "pending", data["status"])
+	assert.Equal(t, "Sophea Chan", data["full_name"])
+	assert.Equal(t, "1998-04-03", data["dob"])
+	assert.Equal(t, "123 Riverside Street", data["address"])
+	assert.Equal(t, "https://example.com/id-card.jpg", data["id_card_image_url"])
+	assert.Equal(t, "https://example.com/selfie.jpg", data["selfie_image_url"])
+}
+
 func setupTransferTest(t *testing.T) (*gin.Engine, *config.Config) {
 	t.Helper()
 	if os.Getenv("TEST_DATABASE_URL") == "" {

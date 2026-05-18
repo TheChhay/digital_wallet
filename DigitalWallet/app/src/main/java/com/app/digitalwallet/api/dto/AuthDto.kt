@@ -47,3 +47,4 @@ data class UserResponse(
     val status: String,
     @SerialName("profile_image_url") val profileImageUrl: String? = null
 )
+

@@ -19,6 +19,80 @@ components:
         success: { type: boolean }
         message: { type: string }
         data: { type: object }
+    KYCSubmitRequest:
+      type: object
+      required: [full_name, dob, address, id_card_image_url, selfie_image_url]
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 160
+          example: Sophea Chan
+        dob:
+          type: string
+          format: date
+          example: "1998-04-03"
+        address:
+          type: string
+          minLength: 10
+          example: 123 Riverside Street, Phnom Penh
+        id_card_image_url:
+          type: string
+          format: uri
+          example: https://example.com/uploads/kyc/id-cards/id-card.jpg
+        selfie_image_url:
+          type: string
+          format: uri
+          example: https://example.com/uploads/kyc/selfies/selfie.jpg
+    KYCResponse:
+      type: object
+      required: [submitted, status]
+      properties:
+        submitted:
+          type: boolean
+          description: Whether the authenticated user has submitted KYC details.
+          example: true
+        status:
+          type: string
+          enum: [not_submitted, pending, approved, rejected]
+          example: pending
+        full_name:
+          type: string
+          example: Sophea Chan
+        dob:
+          type: string
+          format: date
+          example: "1998-04-03"
+        address:
+          type: string
+          example: 123 Riverside Street, Phnom Penh
+        id_card_image_url:
+          type: string
+          format: uri
+          example: https://example.com/uploads/kyc/id-cards/id-card.jpg
+        selfie_image_url:
+          type: string
+          format: uri
+          example: https://example.com/uploads/kyc/selfies/selfie.jpg
+        rejection_reason:
+          type: string
+          example: ID card image is blurry
+        submitted_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        reviewed_at:
+          type: string
+          format: date-time
+    KYCAPIResponse:
+      allOf:
+        - $ref: "#/components/schemas/APIResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/KYCResponse"
 paths:
   /auth/register:
     post:
@@ -68,8 +142,44 @@ paths:
       responses:
         "200": { description: OK }
   /me/kyc:
+    get:
+      summary: Get the authenticated user's KYC submission state and details
+      description: >
+        Returns the user's latest KYC details. If the user has not submitted
+        KYC yet, the response still succeeds with submitted=false and
+        status=not_submitted.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KYCAPIResponse"
+              examples:
+                notSubmitted:
+                  summary: KYC not submitted
+                  value:
+                    success: true
+                    message: Success
+                    data:
+                      submitted: false
+                      status: not_submitted
+                pending:
+                  summary: KYC submitted and pending review
+                  value:
+                    success: true
+                    message: Success
+                    data:
+                      submitted: true
+                      status: pending
+                      full_name: Sophea Chan
+                      dob: "1998-04-03"
+                      address: 123 Riverside Street, Phnom Penh
+                      id_card_image_url: "https://example.com/uploads/kyc/id-cards/id-card.jpg"
+                      selfie_image_url: "https://example.com/uploads/kyc/selfies/selfie.jpg"
     post:
       summary: Submit KYC images and identity details
+      description: Accepts either multipart image uploads or direct image URLs. Submitting again replaces the user's previous KYC details and resets the status to pending.
       requestBody:
         required: true
         content:
@@ -93,24 +203,14 @@ paths:
                   format: binary
           application/json:
             schema:
-              type: object
-              required: [full_name, dob, address, id_card_image_url, selfie_image_url]
-              properties:
-                full_name:
-                  type: string
-                dob:
-                  type: string
-                  format: date
-                address:
-                  type: string
-                id_card_image_url:
-                  type: string
-                  format: uri
-                selfie_image_url:
-                  type: string
-                  format: uri
+              $ref: "#/components/schemas/KYCSubmitRequest"
       responses:
-        "200": { description: OK }
+        "200":
+          description: KYC submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KYCAPIResponse"
   /wallet:
     get:
       summary: Get wallet balance

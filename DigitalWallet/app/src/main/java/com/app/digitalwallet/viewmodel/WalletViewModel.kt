@@ -84,21 +84,21 @@ class WalletViewModel @Inject constructor(private val repository: WalletReposito
         }
     }
 
-    fun loadMoreTransactions() {
-        if (_isLoadingMore.value || !_hasMore.value) return
-        
-        viewModelScope.launch {
-            _isLoadingMore.value = true
-            repository.getAllTransactions(_nextCursor.value)
-                .catch { _isLoadingMore.value = false }
-                .collect { page ->
-                    _transactions.value = _transactions.value + page.transactions
-                    _nextCursor.value = page.nextCursor
-                    _hasMore.value = page.hasMore
-                    _isLoadingMore.value = false
-                }
-        }
-    }
+//    fun loadMoreTransactions() {
+//        if (_isLoadingMore.value || !_hasMore.value) return
+//
+//        viewModelScope.launch {
+//            _isLoadingMore.value = true
+//            repository.getAllTransactions(_nextCursor.value)
+//                .catch { _isLoadingMore.value = false }
+//                .collect { page ->
+//                    _transactions.value = _transactions.value + page.transactions
+//                    _nextCursor.value = page.nextCursor
+//                    _hasMore.value = page.hasMore
+//                    _isLoadingMore.value = false
+//                }
+//        }
+//    }
 
     fun transferMoney(phone: String? = null, walletId: String? = null, amount: Double, note: String?, onComplete: (Boolean) -> Unit) {
         val currentBalance = (uiState.value as? WalletUiState.Success)?.walletInfo?.balance ?: 0.0

@@ -209,6 +209,20 @@ func (s *Service) SubmitKYC(userID uuid.UUID, req dto.KYCSubmitRequest) (*models
 	return s.repo.FindKYCByUserID(userID)
 }
 
+func (s *Service) GetKYC(userID uuid.UUID) (*dto.KYCResponse, error) {
+	kyc, err := s.repo.FindKYCByUserID(userID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) || errors.Is(err, gorm.ErrRecordNotFound) {
+			return &dto.KYCResponse{
+				Submitted: false,
+				Status:    "not_submitted",
+			}, nil
+		}
+		return nil, err
+	}
+	return mapKYC(kyc), nil
+}
+
 func (s *Service) ReviewKYC(adminID, userID uuid.UUID, req dto.KYCReviewRequest) (*models.KYCVerification, error) {
 	kyc, err := s.repo.FindKYCByUserID(userID)
 	if err != nil {
@@ -554,6 +568,22 @@ func mapUser(user *models.User) dto.UserResponse {
 		Status:          string(user.Status),
 		ProfileImageURL: user.ProfileImageURL,
 		CreatedAt:       user.CreatedAt,
+	}
+}
+
+func mapKYC(kyc *models.KYCVerification) *dto.KYCResponse {
+	return &dto.KYCResponse{
+		Submitted:       true,
+		Status:          string(kyc.Status),
+		FullName:        kyc.FullName,
+		DOB:             kyc.DOB.Format("2006-01-02"),
+		Address:         kyc.Address,
+		IDCardImageURL:  kyc.IDCardImageURL,
+		SelfieImageURL:  kyc.SelfieImageURL,
+		RejectionReason: kyc.RejectionReason,
+		SubmittedAt:     &kyc.CreatedAt,
+		UpdatedAt:       &kyc.UpdatedAt,
+		ReviewedAt:      kyc.ReviewedAt,
 	}
 }
 

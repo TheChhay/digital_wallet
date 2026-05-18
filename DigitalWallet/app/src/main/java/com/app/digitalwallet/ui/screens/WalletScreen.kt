@@ -1,6 +1,5 @@
 package com.app.digitalwallet.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,32 +11,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.digitalwallet.viewmodel.WalletUiState
 import com.app.digitalwallet.viewmodel.WalletViewModel
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.app.digitalwallet.ui.components.AddCardButton
 import com.app.digitalwallet.ui.components.CreditCardItem
 import com.app.digitalwallet.ui.theme.ZenAccent
-import com.app.digitalwallet.ui.theme.ZenBlue
-import com.app.digitalwallet.ui.theme.ZenGray
 import com.app.digitalwallet.ui.theme.ZenPrimary
 import java.util.Locale
 
@@ -56,30 +42,6 @@ fun WalletScreen(viewModel: WalletViewModel) {
                             color = MaterialTheme.colorScheme.onSurface, 
                             fontWeight = FontWeight.Bold, 
                             fontSize = 20.sp
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { }) {
-                        Surface(
-                            modifier = Modifier.size(32.dp), 
-                            shape = CircleShape, 
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Icon(
-                                Icons.Default.Person, 
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(
-                            Icons.Outlined.Notifications, 
-                            contentDescription = null, 
-                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -125,22 +87,6 @@ fun WalletScreen(viewModel: WalletViewModel) {
                             expiry = "12/26",
                             gradient = Brush.horizontalGradient(listOf(ZenPrimary, ZenAccent))
                         )
-                    }
-                    
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        CreditCardItem(
-                            number = "•••• •••• •••• 4590",
-                            holder = "Alex Johnson",
-                            expiry = "08/25",
-                            gradient = Brush.horizontalGradient(listOf(Color(0xFF2C3E50), Color(0xFF000000)))
-                        )
-                    }
-                    
-                    item {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        AddCardButton()
-                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
             }

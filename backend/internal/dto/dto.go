@@ -84,6 +84,20 @@ type KYCSubmitRequest struct {
 	SelfieImageURL string `json:"selfie_image_url"  binding:"required,url"`
 }
 
+type KYCResponse struct {
+	Submitted       bool       `json:"submitted"`
+	Status          string     `json:"status"`
+	FullName        string     `json:"full_name,omitempty"`
+	DOB             string     `json:"dob,omitempty"`
+	Address         string     `json:"address,omitempty"`
+	IDCardImageURL  string     `json:"id_card_image_url,omitempty"`
+	SelfieImageURL  string     `json:"selfie_image_url,omitempty"`
+	RejectionReason string     `json:"rejection_reason,omitempty"`
+	SubmittedAt     *time.Time `json:"submitted_at,omitempty"`
+	UpdatedAt       *time.Time `json:"updated_at,omitempty"`
+	ReviewedAt      *time.Time `json:"reviewed_at,omitempty"`
+}
+
 type KYCReviewRequest struct {
 	Status          string `json:"status"           binding:"required,oneof=approved rejected"`
 	RejectionReason string `json:"rejection_reason"`

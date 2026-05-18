@@ -2,6 +2,7 @@ package com.app.digitalwallet.di
 
 import android.content.Context
 import com.app.digitalwallet.api.AuthApiService
+import com.app.digitalwallet.api.KycApiService
 import com.app.digitalwallet.api.QRApiService
 import com.app.digitalwallet.api.WalletApiService
 import com.app.digitalwallet.api.dto.RefreshRequest
@@ -30,10 +31,11 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-//     private const val BASE_URL = "http://10.0.2.2:8080/api/v1/"
-    private const val BASE_URL = "http://10.90.163.29:8080/api/v1/"
-
-
+    /**
+     * Base host URL for images and other non-API resources
+     */
+    const val BASE_HOST = "http://10.90.163.174:8080"
+    private const val BASE_URL = "$BASE_HOST/api/v1/"
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -177,5 +179,11 @@ object NetworkModule {
     @Singleton
     fun provideWalletApiService(retrofit: Retrofit): WalletApiService {
         return retrofit.create(WalletApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideKycApiService(retrofit: Retrofit): KycApiService {
+        return retrofit.create(KycApiService::class.java)
     }
 }

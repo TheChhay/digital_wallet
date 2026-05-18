@@ -1,6 +1,18 @@
+// D:/mobile app project/digital_wallet/DigitalWallet/app/src/main/java/com/app/digitalwallet/ui/screens/IdentityVerificationScreen.kt
+
 package com.app.digitalwallet.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -9,58 +21,147 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.outlined.AccountBox
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
 import com.app.digitalwallet.ui.components.IDUploadCard
 import com.app.digitalwallet.ui.components.PrimaryButton
 import com.app.digitalwallet.ui.components.ZenTextField
-import com.app.digitalwallet.ui.theme.*
+import com.app.digitalwallet.viewmodel.KYCViewModel
+import com.app.digitalwallet.viewmodel.KycUiState
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
+// ─────────────────────────────────────────────────────────────
+// KYC Status enum — maps server strings to typed values
+// ─────────────────────────────────────────────────────────────
+enum class KycStatus(val value: String) {
+    PENDING("pending"),
+    APPROVED("approved"),
+    REJECTED("rejected"),
+    UNKNOWN("unknown");
+
+    companion object {
+        fun from(value: String?): KycStatus =
+            entries.firstOrNull { it.value == value } ?: UNKNOWN
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Identity Verification Form Screen
+// ─────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IdentityVerificationScreen(onBack: () -> Unit, onProceed: () -> Unit) {
+fun IdentityVerificationScreen(
+    onBack: () -> Unit,
+    onProceed: () -> Unit,
+    viewModel: KYCViewModel = hiltViewModel()
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val uiState = viewModel.kycUiState
+
+    // If already submitted, show the status screen instead of the form
+    if (uiState is KycUiState.Loaded) {
+        IdentityVerified(
+            status = KycStatus.from(uiState.data.status),
+            fullName = uiState.data.fullName,
+            rejectionReason = uiState.data.rejectionReason,
+            onBack = onBack,
+            onResubmit = { viewModel.resetKycState() }
+        )
+        return
+    }
+
+    val idCardPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? -> viewModel.idCardUri = uri }
+
+    val selfiePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? -> viewModel.selfieUri = uri }
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                            timeZone = TimeZone.getTimeZone("UTC")
+                        }
+                        viewModel.dob = formatter.format(Date(millis))
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // Initial check for KYC status and navigation event
+    LaunchedEffect(Unit) {
+        viewModel.getKYC()
+        viewModel.verificationSuccess.collect { onProceed() }
+    }
+
+    val isLoading = uiState is KycUiState.Loading
+    val errorMessage = (uiState as? KycUiState.Error)?.message
+
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("ZenWallet", color = ZenBlue, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                    }
+                    Text(
+                        "Identity Verification",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.primary
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = ZenBlue)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colorScheme.primary
+                        )
                     }
                 },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Help", tint = ZenGray)
-                    }
-                    Surface(
-                        modifier = Modifier.padding(end = 8.dp).size(32.dp),
-                        shape = CircleShape,
-                        color = Color.LightGray
-                    ) {
-                        // Placeholder for profile image
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = colorScheme.surface,
+                    titleContentColor = colorScheme.onSurface
+                )
             )
         },
-        containerColor = Color(0xFFFBFBFE)
+        containerColor = colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -69,213 +170,525 @@ fun IdentityVerificationScreen(onBack: () -> Unit, onProceed: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
-            // Step Indicator
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "STEP 2 OF 3",
-                        color = ZenBlue,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    LinearProgressIndicator(
-                        progress = { 0.66f },
-                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-                        color = ZenBlue,
-                        trackColor = Color(0xFFE0E0E0)
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Identity Verification",
-                    color = ZenGray,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
             Text(
                 text = "Identity Check",
-                fontSize = 24.sp,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "To comply with financial regulations, please provide clear photos of your official ID and a quick selfie.",
-                fontSize = 14.sp,
-                color = ZenGray,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ID Front
-            IDUploadCard(
-                title = "ID Card Front",
-                subtitle = "Tap to capture or upload",
-                icon = Icons.Outlined.Badge
+            // ── ID Card Upload ──
+            Text(
+                "Upload Documents",
+                style = MaterialTheme.typography.titleSmall,
+                color = colorScheme.primary
             )
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ID Back
-            IDUploadCard(
-                title = "ID Card Back",
-                subtitle = "Clear view of barcode/text",
-                icon = Icons.Outlined.AccountBox
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Live Selfie Section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .border(
+                        width = 1.dp,
+                        color = if (viewModel.idCardUri != null) colorScheme.primary
+                        else colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(16.dp)
+                    )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            modifier = Modifier.size(40.dp),
-                            shape = CircleShape,
-                            color = ZenPrimary.copy(alpha = 0.1f)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Outlined.Face, contentDescription = null, tint = ZenPrimary)
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("Live Selfie", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text("Verify it's really you with a quick photo.", color = ZenGray, fontSize = 12.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.LightGray)
-                    ) {
-                        // Placeholder for selfie preview
-                        Box(
-                            modifier = Modifier
-                                .padding(12.dp)
-                                .align(Alignment.TopEnd)
-                                .background(Color.Blue.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(6.dp).background(Color.Red, CircleShape))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("LIVE", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEEEEE)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Outlined.CameraAlt, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Retake Photo", color = Color.Gray)
-                    }
+                IDUploadCard(
+                    title = if (viewModel.idCardUri != null) "ID Card Captured" else "ID Card Front",
+                    subtitle = if (viewModel.idCardUri != null) "Tap to change image"
+                    else "Tap to capture or upload",
+                    icon = if (viewModel.idCardUri != null) Icons.Default.CheckCircle
+                    else Icons.Outlined.Badge,
+                    onClick = { idCardPicker.launch("image/*") }
+                )
+                if (viewModel.idCardUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(viewModel.idCardUri),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.2f
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Personal Details Form
-            Text("Personal Details", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = ZenGray)
+            // ── Selfie Upload ──
+            Text(
+                "Live Selfie",
+                style = MaterialTheme.typography.titleSmall,
+                color = colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .border(
+                        width = 1.dp,
+                        color = if (viewModel.selfieUri != null) colorScheme.primary
+                        else colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+            ) {
+                IDUploadCard(
+                    title = if (viewModel.selfieUri != null) "Selfie Captured" else "Live Selfie",
+                    subtitle = if (viewModel.selfieUri != null) "Tap to change image"
+                    else "Verify it's really you with a quick photo",
+                    icon = if (viewModel.selfieUri != null) Icons.Default.CheckCircle
+                    else Icons.Outlined.Face,
+                    onClick = { selfiePicker.launch("image/*") }
+                )
+                if (viewModel.selfieUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(viewModel.selfieUri),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.2f
+                    )
+                }
+                // Live badge
+                Surface(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .align(Alignment.TopEnd),
+                    color = Color.Black.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(Color.Red, CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "LIVE",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ── Personal Details ──
+            Text(
+                "Personal Details",
+                style = MaterialTheme.typography.titleSmall,
+                color = colorScheme.primary
+            )
             Spacer(modifier = Modifier.height(16.dp))
 
             ZenTextField(
-                value = "",
-                onValueChange = {},
+                value = viewModel.fullName,
+                onValueChange = { viewModel.fullName = it },
                 label = "FULL NAME (AS ON ID)",
                 placeholder = "John Doe",
                 isOutlined = true
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Box(modifier = Modifier.weight(1f)) {
-                    ZenTextField(
-                        value = "",
-                        onValueChange = {},
-                        label = "DATE OF BIRTH",
-                        placeholder = "DD/MM/YYYY",
-                        isOutlined = true
-                    )
-                }
-                Box(modifier = Modifier.weight(1f)) {
-                    ZenTextField(
-                        value = "",
-                        onValueChange = {},
-                        label = "ID NUMBER",
-                        placeholder = "0-12345678",
-                        isOutlined = true
-                    )
-                }
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             ZenTextField(
-                value = "",
-                onValueChange = {},
+                value = viewModel.dob,
+                onValueChange = { viewModel.dob = it },
+                label = "DATE OF BIRTH",
+                placeholder = "YYYY-MM-DD",
+                isOutlined = true,
+                readOnly = true,
+                trailingIcon = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            contentDescription = "Select Date",
+                            tint = colorScheme.primary
+                        )
+                    }
+                },
+                modifier = Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { showDatePicker = true }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ZenTextField(
+                value = viewModel.address,
+                onValueChange = { viewModel.address = it },
                 label = "RESIDENTIAL ADDRESS",
                 placeholder = "123 Financial District, Suite 400",
                 minLines = 3,
                 isOutlined = true
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // ── Error message (from KycUiState.Error) ──
+            AnimatedVisibility(visible = errorMessage != null) {
+                errorMessage?.let {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colorScheme.errorContainer
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = it,
+                                color = colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            }
 
-            // Security Notice
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ── Security Notice ──
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                color = Color(0xFFE8F5E9)
+                shape = RoundedCornerShape(16.dp),
+                color = if (isSystemInDarkTheme()) colorScheme.surfaceVariant
+                else Color(0xFFE8F5E9)
             ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(18.dp))
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = if (isSystemInDarkTheme()) colorScheme.primary
+                        else Color(0xFF2E7D32),
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "Your data is encrypted with 256-bit AES protection. We never share your personal information with unauthorized third parties.",
-                        fontSize = 12.sp,
-                        color = Color(0xFF2E7D32),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isSystemInDarkTheme()) colorScheme.onSurface
+                        else Color(0xFF2E7D32),
                         lineHeight = 18.sp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             PrimaryButton(
-                text = "Proceed for Verification",
-                onClick = onProceed,
+                text = if (isLoading) "Submitting..." else "Proceed for Verification",
+                onClick = { viewModel.submitKYC() },
+                enabled = !isLoading,
                 icon = Icons.AutoMirrored.Filled.ArrowForward
             )
-            
-            Spacer(modifier = Modifier.height(32.dp))
+
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Identity Verified / Status Screen
+// ─────────────────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun IdentityVerified(
+    status: KycStatus,
+    fullName: String? = null,
+    rejectionReason: String? = null,
+    onBack: () -> Unit,
+    onResubmit: () -> Unit = {}
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    // Visual config per status
+    val config = when (status) {
+        KycStatus.APPROVED -> StatusConfig(
+            icon = Icons.Default.CheckCircle,
+            iconTint = Color(0xFF2E7D32),
+            iconBg = Color(0xFFE8F5E9),
+            title = "Verification Approved!",
+            subtitle = buildString {
+                append("Congratulations")
+                if (!fullName.isNullOrBlank()) append(", $fullName")
+                append("! Your identity has been successfully verified. You now have full access to all wallet features.")
+            },
+            badge = "APPROVED",
+            badgeColor = Color(0xFF2E7D32),
+            badgeBg = Color(0xFFE8F5E9),
+            showResubmit = false
+        )
+        KycStatus.PENDING -> StatusConfig(
+            icon = Icons.Outlined.HourglassTop,
+            iconTint = Color(0xFFB45309),
+            iconBg = Color(0xFFFFF8E1),
+            title = "Under Review",
+            subtitle = "Your documents have been submitted and are currently being reviewed by our compliance team. This usually takes 1–2 business days. We'll notify you once the review is complete.",
+            badge = "PENDING",
+            badgeColor = Color(0xFFB45309),
+            badgeBg = Color(0xFFFFF8E1),
+            showResubmit = false
+        )
+        KycStatus.REJECTED -> StatusConfig(
+            icon = Icons.Default.Warning,
+            iconTint = colorScheme.error,
+            iconBg = colorScheme.errorContainer,
+            title = "Verification Failed",
+            subtitle = "Unfortunately we were unable to verify your identity with the documents provided. Please review the reason below and resubmit with the correct information.",
+            badge = "REJECTED",
+            badgeColor = colorScheme.error,
+            badgeBg = colorScheme.errorContainer,
+            showResubmit = true
+        )
+        KycStatus.UNKNOWN -> StatusConfig(
+            icon = Icons.Default.Warning,
+            iconTint = colorScheme.onSurfaceVariant,
+            iconBg = colorScheme.surfaceVariant,
+            title = "Status Unknown",
+            subtitle = "We could not determine your verification status. Please try again or contact support.",
+            badge = "UNKNOWN",
+            badgeColor = colorScheme.onSurfaceVariant,
+            badgeBg = colorScheme.surfaceVariant,
+            showResubmit = false
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Verification Status",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.primary
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colorScheme.primary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = colorScheme.surface
+                )
+            )
+        },
+        containerColor = colorScheme.background
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+
+            // ── Status Icon ──
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(config.iconBg, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = config.icon,
+                    contentDescription = null,
+                    tint = config.iconTint,
+                    modifier = Modifier.size(52.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ── Status Badge ──
+            Surface(
+                shape = RoundedCornerShape(50.dp),
+                color = config.badgeBg
+            ) {
+                Text(
+                    text = config.badge,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    color = config.badgeColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    letterSpacing = 1.5.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── Title ──
+            Text(
+                text = config.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ── Subtitle ──
+            Text(
+                text = config.subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp
+            )
+
+            // ── Rejection Reason (only for rejected) ──
+            if (status == KycStatus.REJECTED && !rejectionReason.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = colorScheme.errorContainer
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Reason for Rejection",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = rejectionReason,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onErrorContainer,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            // ── What happens next (for pending) ──
+            if (status == KycStatus.PENDING) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = colorScheme.surfaceVariant
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "What happens next?",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        listOf(
+                            "Our team reviews your documents",
+                            "You'll receive a push notification",
+                            "Full wallet access granted on approval"
+                        ).forEachIndexed { i, step ->
+                            Row(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .background(colorScheme.primary, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${i + 1}",
+                                        color = colorScheme.onPrimary,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = step,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(36.dp))
+
+            // ── Actions ──
+            if (config.showResubmit) {
+                PrimaryButton(
+                    text = "Resubmit Documents",
+                    onClick = onResubmit,
+                    icon = Icons.AutoMirrored.Filled.ArrowForward
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            OutlinedButton(
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50.dp)
+            ) {
+                Text("Back to Home")
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal helper — keeps config off the composable
+// ─────────────────────────────────────────────────────────────
+private data class StatusConfig(
+    val icon: ImageVector,
+    val iconTint: Color,
+    val iconBg: Color,
+    val title: String,
+    val subtitle: String,
+    val badge: String,
+    val badgeColor: Color,
+    val badgeBg: Color,
+    val showResubmit: Boolean
+)

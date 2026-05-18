@@ -42,6 +42,7 @@ func Setup(cfg *config.Config, logger *zap.Logger, h *handlers.Handler) *gin.Eng
 		me := v1.Group("/me", middleware.Auth(cfg))
 		me.GET("", h.Profile)
 		me.PUT("/profile-image", h.UpdateProfileImage)
+		me.GET("/kyc", h.GetKYC)
 		me.POST("/kyc", h.SubmitKYC)
 
 		wallet := v1.Group("/wallet", middleware.Auth(cfg))

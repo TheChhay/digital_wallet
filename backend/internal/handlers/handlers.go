@@ -129,6 +129,11 @@ func (h *Handler) SubmitKYC(c *gin.Context) {
 	respond(c, http.StatusOK, "KYC submitted", resp, err)
 }
 
+func (h *Handler) GetKYC(c *gin.Context) {
+	resp, err := h.service.GetKYC(middleware.CurrentUserID(c))
+	respond(c, http.StatusOK, "Success", resp, err)
+}
+
 func (h *Handler) Wallet(c *gin.Context) {
 	resp, err := h.service.Wallet(middleware.CurrentUserID(c))
 	respond(c, http.StatusOK, "Success", resp, err)

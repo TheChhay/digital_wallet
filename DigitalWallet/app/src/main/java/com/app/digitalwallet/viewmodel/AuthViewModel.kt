@@ -7,13 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.digitalwallet.api.dto.LoginRequest
 import com.app.digitalwallet.api.dto.RegisterRequest
+import com.app.digitalwallet.api.dto.UserResponse
 import com.app.digitalwallet.auth.SessionManager
 import com.app.digitalwallet.data.AuthRepository
 import com.app.digitalwallet.utils.PhoneNumberUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
 import javax.inject.Inject
 
 @HiltViewModel
@@ -29,6 +29,25 @@ class AuthViewModel @Inject constructor(
 
     var registerUiState by mutableStateOf(AuthUiState())
         private set
+
+    var uploadProfileImageUiState by mutableStateOf(AuthUiState())
+        private set
+
+    var userProfile by mutableStateOf<UserResponse?>(null)
+        private set
+
+    fun getMe() {
+        viewModelScope.launch {
+            try {
+                val response = repository.getMe()
+                if (response.success) {
+                    userProfile = response.data
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
 
     fun login(phone: String, password: String, onLoginSuccess: () -> Unit) {
         viewModelScope.launch {
@@ -62,6 +81,24 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 registerUiState = registerUiState.copy(isLoading = false, error = e.localizedMessage ?: "An error occurred")
+            }
+        }
+    }
+
+    fun updateProfileImage(image: MultipartBody.Part, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            uploadProfileImageUiState = uploadProfileImageUiState.copy(isLoading = true, error = null)
+            try {
+                val response = repository.updateProfileImage(image)
+                if (response.success && response.data != null) {
+                    userProfile = response.data
+                    uploadProfileImageUiState = uploadProfileImageUiState.copy(isLoading = false)
+                    onSuccess()
+                } else {
+                    uploadProfileImageUiState = uploadProfileImageUiState.copy(isLoading = false, error = response.message)
+                }
+            } catch (e: Exception) {
+                uploadProfileImageUiState = uploadProfileImageUiState.copy(isLoading = false, error = e.localizedMessage ?: "An error occurred")
             }
         }
     }

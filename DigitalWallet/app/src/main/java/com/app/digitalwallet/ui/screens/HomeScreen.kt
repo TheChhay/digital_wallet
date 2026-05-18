@@ -35,21 +35,43 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import com.app.digitalwallet.data.Transaction
 import com.app.digitalwallet.data.WalletInfo
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import com.app.digitalwallet.viewmodel.AuthViewModel
 import com.app.digitalwallet.viewmodel.WalletUiState
 import com.app.digitalwallet.viewmodel.WalletViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.digitalwallet.di.NetworkModule
+import androidx.compose.runtime.LaunchedEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: WalletViewModel, 
+    viewModel: WalletViewModel,
+    authViewModel: AuthViewModel = hiltViewModel(),
     onNavigateToTransfer: () -> Unit,
     onNavigateToScan: () -> Unit,
     onNavigateToMyQR: (String) -> Unit,
     onNavigateToRequest: () -> Unit,
-    onNavigateToAllTransactions: () -> Unit
+    onNavigateToAllTransactions: () -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val todayTransactions by viewModel.todayTransactions.collectAsState()
+    val userProfile = authViewModel.userProfile
+
+    val fullImageUrl = remember(userProfile?.profileImageUrl) {
+        val path = userProfile?.profileImageUrl
+        if (path != null && path.startsWith("/")) {
+            "${NetworkModule.BASE_HOST}$path"
+        } else {
+            path
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        authViewModel.getMe()
+    }
     
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -69,17 +91,26 @@ fun HomeScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { /* Profile */ }) {
+                    IconButton(onClick = onNavigateToProfile) {
                         Surface(
                             modifier = Modifier.size(32.dp),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
-                            Icon(
-                                Icons.Default.Person, 
-                                contentDescription = "Profile",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            if (!fullImageUrl.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = fullImageUrl,
+                                    contentDescription = "Profile",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = "Profile",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 },
@@ -246,7 +277,8 @@ fun HomeContent(
 @Composable
 fun EmptyTransactionsState() {
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
             .padding(vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

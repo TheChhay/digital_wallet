@@ -204,7 +204,8 @@ fun MainScreen() {
                     onNavigateToRequest = {
                         navController.navigate(Screen.DynamicQR.route)
                     },
-                    onNavigateToAllTransactions = { navController.navigate(Screen.History.route) }
+                    onNavigateToAllTransactions = { navController.navigate(Screen.History.route) },
+                    onNavigateToProfile = { navController.navigate(Screen.Profile.route) }
                 ) 
             }
             composable(Screen.Wallet.route) { WalletScreen(viewModel = walletViewModel) }
