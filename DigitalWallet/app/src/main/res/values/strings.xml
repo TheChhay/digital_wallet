@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Digital Wallet</string>
+    <string name="notification_channel_name">Wallet Notifications</string>
+    <string name="notification_channel_desc">Notifications for transactions, balance, and security</string>
 </resources>

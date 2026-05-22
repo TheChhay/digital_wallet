@@ -17,17 +17,29 @@ class QRRepository @Inject constructor(
     private val qrApiService: QRApiService
 ) {
     suspend fun generateDynamicQR(walletId: String, amount: Double, currency: String): GenerateQRResponse? {
-        val response = qrApiService.generateDynamicQR(GenerateQRRequest(walletId, amount, currency))
-        return if (response.isSuccessful) response.body()?.data else null
+        return try {
+            val response = qrApiService.generateDynamicQR(GenerateQRRequest(walletId, amount, currency))
+            if (response.isSuccessful) response.body()?.data else null
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun validateToken(token: String): ValidateTokenResponse? {
-        val response = qrApiService.validateToken(ValidateTokenRequest(token))
-        return if (response.isSuccessful) response.body()?.data else null
+        return try {
+            val response = qrApiService.validateToken(ValidateTokenRequest(token))
+            if (response.isSuccessful) response.body()?.data else null
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun getStaticQR(address: String): StaticQRResponse? {
-        val response = qrApiService.getStaticQR(address)
-        return if (response.isSuccessful) response.body()?.data else null
+        return try {
+            val response = qrApiService.getStaticQR(address)
+            if (response.isSuccessful) response.body()?.data else null
+        } catch (e: Exception) {
+            null
+        }
     }
 }

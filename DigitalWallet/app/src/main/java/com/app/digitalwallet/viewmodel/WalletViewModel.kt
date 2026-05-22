@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.app.digitalwallet.data.Transaction
 import com.app.digitalwallet.data.WalletInfo
 import com.app.digitalwallet.data.WalletRepository
+import com.app.digitalwallet.util.NotificationHelper
 import com.app.digitalwallet.utils.PhoneNumberUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,10 @@ import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
-class WalletViewModel @Inject constructor(private val repository: WalletRepository) : ViewModel() {
+class WalletViewModel @Inject constructor(
+    private val repository: WalletRepository,
+    private val notificationHelper: NotificationHelper
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WalletUiState>(WalletUiState.Loading)
     val uiState: StateFlow<WalletUiState> = _uiState.asStateFlow()
@@ -121,6 +125,10 @@ class WalletViewModel @Inject constructor(private val repository: WalletReposito
                 if (success) {
                     refresh()
                     _transferStatus.value = TransferStatus.Success
+                    notificationHelper.showNotification(
+                        title = "Transfer Successful",
+                        message = "You have successfully transferred $${String.format(Locale.US, "%.2f", amount)}."
+                    )
                 } else {
                     _transferStatus.value = TransferStatus.Error("Transfer failed. Please try again.")
                 }
@@ -134,14 +142,11 @@ class WalletViewModel @Inject constructor(private val repository: WalletReposito
 
     fun lookupRecipient(phone: String? = null, walletId: String? = null, onResult: (WalletRepository.RecipientLookupResult?) -> Unit) {
         viewModelScope.launch {
-            val result = when {
-                walletId != null -> repository.findUserByWalletId(walletId = walletId)
-                phone != null -> {
-                    val normalizedPhone = PhoneNumberUtils.normalize(phone)
-                    repository.findUserByWalletId(phone = normalizedPhone)
-                }
-                else -> null
-            }
+            val normalizedPhone = phone?.let { PhoneNumberUtils.normalize(it) }
+            val result = repository.lookupRecipient(
+                phone = normalizedPhone,
+                walletId = walletId
+            )
             onResult(result)
         }
     }

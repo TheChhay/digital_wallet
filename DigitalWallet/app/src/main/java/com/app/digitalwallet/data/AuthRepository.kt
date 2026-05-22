@@ -14,32 +14,61 @@ class AuthRepository @Inject constructor(
 ) {
 
     suspend fun login(request: LoginRequest): APIResponse<AuthResponse> {
-        val response = authApi.login(request)
-        if (response.success && response.data != null) {
-            tokenManager.saveTokens(
-                response.data.accessToken,
-                response.data.refreshToken,
-                response.data.user.phone
-            )
+        return try {
+            val response = authApi.login(request)
+            if (response.success && response.data != null) {
+                tokenManager.saveTokens(
+                    response.data.accessToken,
+                    response.data.refreshToken,
+                    response.data.user.phone
+                )
+            }
+            response
+        } catch (e: Exception) {
+            APIResponse(success = false, message = e.localizedMessage ?: "Login failed")
         }
-        return response
     }
 
     suspend fun register(request: RegisterRequest): APIResponse<Unit> {
-        return authApi.register(request)
+        return try {
+            authApi.register(request)
+        } catch (e: Exception) {
+            APIResponse(success = false, message = e.localizedMessage ?: "Registration failed")
+        }
     }
 
     suspend fun updateProfileImage(image: MultipartBody.Part): APIResponse<UserResponse> {
-        return authApi.updateProfileImage(image)
+        return try {
+            authApi.updateProfileImage(image)
+        } catch (e: Exception) {
+            APIResponse(success = false, message = e.localizedMessage ?: "Failed to update image")
+        }
     }
 
     suspend fun getMe(): APIResponse<UserResponse> {
-        return authApi.getMe()
+        return try {
+            authApi.getMe()
+        } catch (e: Exception) {
+            APIResponse(success = false, message = e.localizedMessage ?: "Failed to fetch profile")
+        }
     }
 
     suspend fun updateProfile(request: UserProfileRequest): APIResponse<UserResponse> {
-        return authApi.updateProfile(request)
+        return try {
+            authApi.updateProfile(request)
+        } catch (e: Exception) {
+            APIResponse(success = false, message = e.localizedMessage ?: "Update failed")
+        }
     }
+
+    suspend fun updateFcmToken(token: String): APIResponse<Unit> {
+        return try {
+            authApi.updateFcmToken(FcmTokenRequest(token))
+        } catch (e: Exception) {
+            APIResponse(success = false, message = e.localizedMessage ?: "Failed to update token")
+        }
+    }
+
 
     fun logout() {
         tokenManager.clearTokens()

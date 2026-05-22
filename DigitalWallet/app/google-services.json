@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "861382903190",
+    "project_id": "notification-digital-wallet",
+    "storage_bucket": "notification-digital-wallet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861382903190:android:c57a0bd7b4f90e3194c9b7",
+        "android_client_info": {
+          "package_name": "com.app.digitalwallet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBt7hwL2PbsE22CMWsBrIQbU0rP84cV7dA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

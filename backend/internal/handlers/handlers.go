@@ -148,23 +148,29 @@ func (h *Handler) Wallet(c *gin.Context) {
 	respond(c, http.StatusOK, "Success", resp, err)
 }
 
-func (h *Handler) GetUserInfoByWalletID(c *gin.Context) {
+func (h *Handler) LookupRecipient(c *gin.Context) {
 	walletID := c.Query("wallet_id")
+	phone := c.Query("phone")
 	if walletID == "" {
 		walletID = c.Query("address")
 	}
-	if walletID == "" {
-		utils.Error(c, http.StatusBadRequest, "wallet_id is required", nil)
+	if walletID == "" && phone == "" {
+		utils.Error(c, http.StatusBadRequest, "wallet_id or phone is required", nil)
 		return
 	}
 
-	id, err := uuid.Parse(walletID)
-	if err != nil {
-		utils.Error(c, http.StatusBadRequest, "invalid wallet_id", nil)
+	if walletID != "" {
+		id, err := uuid.Parse(walletID)
+		if err != nil {
+			utils.Error(c, http.StatusBadRequest, "invalid wallet_id", nil)
+			return
+		}
+		resp, err := h.service.GetUserInfoByWalletID(id)
+		respond(c, http.StatusOK, "Success", resp, err)
 		return
 	}
 
-	resp, err := h.service.GetUserInfoByWalletID(id)
+	resp, err := h.service.GetUserInfoByPhone(phone)
 	respond(c, http.StatusOK, "Success", resp, err)
 }
 
@@ -336,4 +342,20 @@ func cursorFilter(c *gin.Context) dto.TransactionFilter {
 		return dto.TransactionFilter{Limit: 20}
 	}
 	return f
+}
+
+func (h *Handler) RegisterFCMToken(c *gin.Context) {
+	var req dto.RegisterFCMTokenRequest
+	if !bind(c, &req) {
+		return
+	}
+	userID := middleware.CurrentUserID(c)
+	err := h.service.UpdateFCMToken(userID, req.FCMToken)
+	respond(c, http.StatusOK, "FCM token registered", gin.H{}, err)
+}
+
+func (h *Handler) GetNotifications(c *gin.Context) {
+	userID := middleware.CurrentUserID(c)
+	notifications, err := h.service.GetNotifications(userID, 20)
+	respond(c, http.StatusOK, "Notifications fetched", notifications, err)
 }

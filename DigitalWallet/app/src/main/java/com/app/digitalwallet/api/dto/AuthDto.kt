@@ -54,4 +54,9 @@ data class UserProfileRequest (
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null)
 
+@Serializable
+data class FcmTokenRequest(
+    @SerialName("fcm_token") val fcmToken: String
+)
+
 

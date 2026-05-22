@@ -10,43 +10,47 @@ import (
 )
 
 type Config struct {
-	AppEnv          string
-	HTTPPort        string
-	DatabaseURL     string
-	JWTSecret       string
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-	RateLimitRPS    float64
-	RateLimitBurst  int
-	UploadDir       string
-	R2AccountID     string
-	R2AccessKeyID   string
-	R2SecretKey     string
-	R2Bucket        string
-	R2Endpoint      string
-	R2PublicBaseURL string
-	R2Region        string
+	AppEnv                  string
+	HTTPPort                string
+	DatabaseURL             string
+	JWTSecret               string
+	AccessTokenTTL          time.Duration
+	RefreshTokenTTL         time.Duration
+	RateLimitRPS            float64
+	RateLimitBurst          int
+	UploadDir               string
+	R2AccountID             string
+	R2AccessKeyID           string
+	R2SecretKey             string
+	R2Bucket                string
+	R2Endpoint              string
+	R2PublicBaseURL         string
+	R2Region                string
+	FirebaseCredentialsPath string
+	FirebaseProjectID       string
 }
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 	cfg := &Config{
-		AppEnv:          getEnv("APP_ENV", "development"),
-		HTTPPort:        getEnv("HTTP_PORT", "8080"),
-		DatabaseURL:     getEnv("DATABASE_URL", ""),
-		JWTSecret:       getEnv("JWT_SECRET", ""),
-		AccessTokenTTL:  durationMinutes("ACCESS_TOKEN_TTL_MINUTES", 15),
-		RefreshTokenTTL: durationHours("REFRESH_TOKEN_TTL_HOURS", 24*30),
-		RateLimitRPS:    floatEnv("RATE_LIMIT_RPS", 5),
-		RateLimitBurst:  intEnv("RATE_LIMIT_BURST", 20),
-		UploadDir:       getEnv("UPLOAD_DIR", "upload"),
-		R2AccountID:     getEnv("R2_ACCOUNT_ID", ""),
-		R2AccessKeyID:   getEnv("R2_ACCESS_KEY_ID", ""),
-		R2SecretKey:     getEnv("R2_SECRET_ACCESS_KEY", ""),
-		R2Bucket:        getEnv("R2_BUCKET", ""),
-		R2Endpoint:      getEnv("R2_ENDPOINT", ""),
-		R2PublicBaseURL: getEnv("R2_PUBLIC_BASE_URL", ""),
-		R2Region:        getEnv("R2_REGION", "auto"),
+		AppEnv:                  getEnv("APP_ENV", "development"),
+		HTTPPort:                getEnv("HTTP_PORT", "8080"),
+		DatabaseURL:             getEnv("DATABASE_URL", ""),
+		JWTSecret:               getEnv("JWT_SECRET", ""),
+		AccessTokenTTL:          durationMinutes("ACCESS_TOKEN_TTL_MINUTES", 15),
+		RefreshTokenTTL:         durationHours("REFRESH_TOKEN_TTL_HOURS", 24*30),
+		RateLimitRPS:            floatEnv("RATE_LIMIT_RPS", 5),
+		RateLimitBurst:          intEnv("RATE_LIMIT_BURST", 20),
+		UploadDir:               getEnv("UPLOAD_DIR", "upload"),
+		R2AccountID:             getEnv("R2_ACCOUNT_ID", ""),
+		R2AccessKeyID:           getEnv("R2_ACCESS_KEY_ID", ""),
+		R2SecretKey:             getEnv("R2_SECRET_ACCESS_KEY", ""),
+		R2Bucket:                getEnv("R2_BUCKET", ""),
+		R2Endpoint:              getEnv("R2_ENDPOINT", ""),
+		R2PublicBaseURL:         getEnv("R2_PUBLIC_BASE_URL", ""),
+		R2Region:                getEnv("R2_REGION", "auto"),
+		FirebaseCredentialsPath: getEnv("FIREBASE_CREDENTIALS_PATH", ""),
+		FirebaseProjectID:       getEnv("FIREBASE_PROJECT_ID", ""),
 	}
 	if cfg.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")

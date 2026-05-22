@@ -12,6 +12,7 @@ import com.app.digitalwallet.api.dto.UserResponse
 import com.app.digitalwallet.auth.SessionManager
 import com.app.digitalwallet.data.AuthRepository
 import com.app.digitalwallet.utils.PhoneNumberUtils
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
@@ -46,12 +47,29 @@ class AuthViewModel @Inject constructor(
                 val response = repository.getMe()
                 if (response.success) {
                     userProfile = response.data
+                    // Update FCM token when we know the user is authenticated
+                    syncFcmToken()
                 } else {
                     // optional: log or surface error if needed
                 }
             } catch (e: Exception) {
                 // getMe is usually a background refresh, so silent is acceptable
                 // but at minimum log it: Log.e("AuthVM", "getMe failed", e)
+            }
+        }
+    }
+
+    private fun syncFcmToken() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                viewModelScope.launch {
+                    try {
+                        repository.updateFcmToken(token)
+                    } catch (e: Exception) {
+                        // Silent failure for background sync
+                    }
+                }
             }
         }
     }
@@ -64,6 +82,7 @@ class AuthViewModel @Inject constructor(
                 val response = repository.login(LoginRequest(normalizedPhone, password))
                 if (response.success && response.data != null) {
                     loginUiState = loginUiState.copy(isLoading = false)
+                    syncFcmToken() // Sync token after successful login
                     onLoginSuccess()
                 } else {
                     loginUiState = loginUiState.copy(isLoading = false, error = response.message)

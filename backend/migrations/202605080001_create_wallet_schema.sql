@@ -120,6 +120,19 @@ CREATE TABLE IF NOT EXISTS qr_tokens (
     created_at  TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS notifications (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       UUID NOT NULL REFERENCES users(id),
+    type          VARCHAR(50) NOT NULL,  -- 'MONEY_RECEIVED' | 'MONEY_SENT'
+    title         VARCHAR(255) NOT NULL,
+    message       TEXT NOT NULL,
+    amount        DECIMAL(15,2),
+    related_tx_id UUID REFERENCES transactions(id),
+    is_read       BOOLEAN DEFAULT FALSE,
+    is_pushed     BOOLEAN DEFAULT FALSE,  -- FCM sent or not
+    created_at    TIMESTAMP DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_qr_tokens_wallet ON qr_tokens(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_qr_tokens_expires ON qr_tokens(expires_at);
 CREATE INDEX IF NOT EXISTS idx_qr_tokens_used ON qr_tokens(is_used);
@@ -135,3 +148,4 @@ DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS wallets;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS qr_tokens;
+DROP TABLE IF EXISTS notifications;

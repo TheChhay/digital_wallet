@@ -37,6 +37,24 @@ func main() {
 
 	repo := repositories.New(db)
 	service := services.New(repo, cfg)
+	
+	// Initialize Firebase if credentials are configured
+	if cfg.FirebaseCredentialsPath != "" && cfg.FirebaseProjectID != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		firebaseClient, err := config.InitFirebase(ctx, cfg)
+		cancel()
+		if err != nil {
+			logger.Warn("Firebase initialization failed", zap.Error(err))
+		} else {
+			defer firebaseClient.Close()
+			notificationService := services.NewNotificationService(firebaseClient.Messaging, firebaseClient.ProjectID, logger)
+			service.SetNotificationService(notificationService)
+			logger.Info("Firebase Messaging initialized successfully")
+		}
+	} else {
+		logger.Warn("Firebase credentials not configured; notifications will be disabled")
+	}
+
 	store := storage.New(cfg)
 	handler := handlers.New(service, store)
 	router := routes.Setup(cfg, logger, handler)

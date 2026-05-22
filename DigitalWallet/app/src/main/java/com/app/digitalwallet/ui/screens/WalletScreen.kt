@@ -1,5 +1,7 @@
 package com.app.digitalwallet.ui.screens
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -20,9 +22,12 @@ import com.app.digitalwallet.ui.theme.ZenPrimary
 import com.app.digitalwallet.viewmodel.AuthViewModel
 import com.app.digitalwallet.viewmodel.WalletUiState
 import com.app.digitalwallet.viewmodel.WalletViewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun WalletScreen(
     viewModel: WalletViewModel,
@@ -30,6 +35,18 @@ fun WalletScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val userProfile = authViewModel.userProfile
+
+    // Notification Permission Handling for Android 13+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val notificationPermissionState = rememberPermissionState(
+            Manifest.permission.POST_NOTIFICATIONS
+        )
+        LaunchedEffect(Unit) {
+            if (!notificationPermissionState.status.isGranted) {
+                notificationPermissionState.launchPermissionRequest()
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         authViewModel.getMe()

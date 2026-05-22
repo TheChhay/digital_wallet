@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -30,12 +31,17 @@ var (
 )
 
 type Service struct {
-	repo *repositories.Repository
-	cfg  *config.Config
+	repo                 *repositories.Repository
+	cfg                  *config.Config
+	notificationService  *NotificationService
 }
 
 func New(repo *repositories.Repository, cfg *config.Config) *Service {
-	return &Service{repo: repo, cfg: cfg}
+	return &Service{repo: repo, cfg: cfg, notificationService: nil}
+}
+
+func (s *Service) SetNotificationService(ns *NotificationService) {
+	s.notificationService = ns
 }
 
 // ─────────────────────────────────────────────
@@ -165,7 +171,6 @@ func (s *Service) UpdateProfile(userID uuid.UUID, req dto.UpdateProfileRequest) 
 	return &resp, nil
 }
 
-
 func (s *Service) UpdateProfileImage(userID uuid.UUID, imageURL string) (*dto.UserResponse, error) {
 	user, err := s.repo.FindUserByID(userID)
 	if err != nil {
@@ -285,6 +290,26 @@ func (s *Service) GetUserInfoByWalletID(walletID uuid.UUID) (*dto.UserInfoRespon
 	return resp, nil
 }
 
+func (s *Service) GetUserInfoByPhone(phone string) (*dto.UserInfoResponse, error) {
+	user, err := s.repo.FindUserByPhone(phone)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.UserInfoResponse{
+		ID:       user.ID,
+		FullName: fmt.Sprintf("%s %s", user.FirstName, user.LastName),
+		Phone:    user.Phone,
+	}, nil
+}
+
+func (s *Service) GetUserIDByPhone(phone string) (uuid.UUID, error) {
+	user, err := s.repo.FindUserByPhone(phone)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return user.ID, nil
+}
+
 // ─────────────────────────────────────────────
 // Transactions
 // ─────────────────────────────────────────────
@@ -359,7 +384,16 @@ func (s *Service) Transfer(senderID uuid.UUID, req dto.TransferRequest) (*models
 		}
 		return txRepo.CreateTransaction(txn)
 	})
-	return txn, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Send async notifications (non-blocking)
+	if txn != nil && s.notificationService != nil {
+		go s.sendTransferNotifications(context.Background(), senderID, receiver, txn)
+	}
+
+	return txn, nil
 }
 
 func (s *Service) moneyMovement(senderID, receiverID *uuid.UUID, txType models.TransactionType, amount int64, desc string) (*models.Transaction, error) {
@@ -576,6 +610,36 @@ func (s *Service) issueTokens(user *models.User) (*dto.AuthResponse, error) {
 	return &dto.AuthResponse{AccessToken: access, RefreshToken: refresh, User: mapUser(user)}, nil
 }
 
+func (s *Service) UpdateFCMToken(userID uuid.UUID, fcmToken string) error {
+	return s.repo.UpdateUserFCMToken(userID, fcmToken)
+}
+
+func (s *Service) GetNotifications(userID uuid.UUID, limit int) ([]dto.NotificationResponse, error) {
+	notifications, err := s.repo.GetNotificationsByUserID(userID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]dto.NotificationResponse, len(notifications))
+	for i, n := range notifications {
+		resp[i] = dto.NotificationResponse{
+			ID:          n.ID,
+			Type:        string(n.Type),
+			Title:       n.Title,
+			Message:     n.Message,
+			Amount:      n.Amount,
+			RelatedTxID: n.RelatedTxID,
+			IsRead:      n.IsRead,
+			CreatedAt:   n.CreatedAt,
+		}
+	}
+	return resp, nil
+}
+
+func (s *Service) MarkNotificationAsRead(notificationID uuid.UUID) error {
+	return s.repo.MarkNotificationAsRead(notificationID)
+}
+
 func mapUser(user *models.User) dto.UserResponse {
 	return dto.UserResponse{
 		ID:              user.ID,
@@ -718,4 +782,69 @@ func decodeCursor(token string) (cursorToken, error) {
 		return cursor, fmt.Errorf("empty cursor")
 	}
 	return cursor, nil
+}
+
+func (s *Service) sendTransferNotifications(ctx context.Context, senderID uuid.UUID, receiver *models.User, txn *models.Transaction) {
+	if s.notificationService == nil {
+		return
+	}
+
+	sender, err := s.repo.FindUserByID(senderID)
+	if err != nil {
+		return
+	}
+
+	amountFloat := float64(txn.AmountCents) / 100.0
+
+	// Send to receiver
+	if receiver.FCMToken != "" {
+		receiverName := fmt.Sprintf("%s %s", sender.FirstName, sender.LastName)
+		notif := &models.Notification{
+			UserID:      receiver.ID,
+			Type:        models.NotificationMoneyReceived,
+			Title:       "Money Received",
+			Message:     fmt.Sprintf("You received $%.2f from %s", amountFloat, receiverName),
+			Amount:      &amountFloat,
+			RelatedTxID: &txn.ID,
+			IsPushed:    false,
+		}
+		if err := s.repo.CreateNotification(notif); err == nil {
+			payload := NotificationPayload{
+				Title:       notif.Title,
+				Message:     notif.Message,
+				Type:        models.NotificationMoneyReceived,
+				Amount:      notif.Amount,
+				SenderName:  &receiverName,
+			}
+			if _, err := s.notificationService.SendNotification(ctx, receiver.FCMToken, payload); err == nil {
+				s.repo.MarkNotificationAsPushed(notif.ID)
+			}
+		}
+	}
+
+	// Send to sender
+	if sender.FCMToken != "" {
+		senderName := fmt.Sprintf("%s %s", receiver.FirstName, receiver.LastName)
+		notif := &models.Notification{
+			UserID:      sender.ID,
+			Type:        models.NotificationMoneySent,
+			Title:       "Transfer Successful",
+			Message:     fmt.Sprintf("You sent $%.2f to %s", amountFloat, senderName),
+			Amount:      &amountFloat,
+			RelatedTxID: &txn.ID,
+			IsPushed:    false,
+		}
+		if err := s.repo.CreateNotification(notif); err == nil {
+			payload := NotificationPayload{
+				Title:        notif.Title,
+				Message:      notif.Message,
+				Type:         models.NotificationMoneySent,
+				Amount:       notif.Amount,
+				ReceiverName: &senderName,
+			}
+			if _, err := s.notificationService.SendNotification(ctx, sender.FCMToken, payload); err == nil {
+				s.repo.MarkNotificationAsPushed(notif.ID)
+			}
+		}
+	}
 }

@@ -201,3 +201,22 @@ type StaticQRResponse struct {
 	QRImageBase64 string `json:"qr_image_base64"`
 	WalletID      string `json:"wallet_id"`
 }
+
+// ─────────────────────────────────────────────
+// Firebase / Notifications
+// ─────────────────────────────────────────────
+
+type RegisterFCMTokenRequest struct {
+	FCMToken string `json:"fcm_token" binding:"required,min=20"`
+}
+
+type NotificationResponse struct {
+	ID          uuid.UUID  `json:"id"`
+	Type        string     `json:"type"`
+	Title       string     `json:"title"`
+	Message     string     `json:"message"`
+	Amount      *float64   `json:"amount,omitempty"`
+	RelatedTxID *uuid.UUID `json:"related_tx_id,omitempty"`
+	IsRead      bool       `json:"is_read"`
+	CreatedAt   time.Time  `json:"created_at"`
+}

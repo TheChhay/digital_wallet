@@ -53,6 +53,7 @@ type User struct {
 	FirstName       string     `gorm:"type:varchar(80);not null" json:"first_name"`
 	LastName        string     `gorm:"type:varchar(80);not null" json:"last_name"`
 	ProfileImageURL string     `gorm:"type:text" json:"profile_image_url"`
+	FCMToken        string     `gorm:"type:varchar(500);index" json:"fcm_token,omitempty"`
 	Role            Role       `gorm:"type:varchar(20);not null;default:'user';index" json:"role"`
 	Status          UserStatus `gorm:"type:varchar(20);not null;default:'active';index" json:"status"`
 	Wallet          *Wallet    `json:"wallet,omitempty"`
@@ -125,4 +126,25 @@ type QRToken struct {
 	IsUsed    bool      `gorm:"default:false;index" json:"is_used"`
 	ExpiresAt time.Time `gorm:"not null;index" json:"expires_at"`
 	CreatedAt time.Time `gorm:"default:now()" json:"created_at"`
+}
+
+type NotificationType string
+
+const (
+	NotificationMoneyReceived NotificationType = "MONEY_RECEIVED"
+	NotificationMoneySent     NotificationType = "MONEY_SENT"
+)
+
+type Notification struct {
+	BaseModel
+	UserID      uuid.UUID        `gorm:"type:uuid;not null;index" json:"user_id"`
+	Type        NotificationType `gorm:"type:varchar(50);not null" json:"type"`
+	Title       string           `gorm:"type:varchar(255);not null" json:"title"`
+	Message     string           `gorm:"type:text;not null" json:"message"`
+	Amount      *float64         `gorm:"type:numeric(15,2)" json:"amount,omitempty"`
+	RelatedTxID *uuid.UUID       `gorm:"type:uuid;index" json:"related_tx_id"`
+	IsRead      bool             `gorm:"default:false;index" json:"is_read"`
+	IsPushed    bool             `gorm:"default:false;index" json:"is_pushed"`
+	User        *User            `gorm:"constraint:OnDelete:CASCADE" json:"-"`
+	Transaction *Transaction     `gorm:"foreignKey:RelatedTxID" json:"-"`
 }

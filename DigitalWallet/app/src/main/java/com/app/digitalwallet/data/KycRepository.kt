@@ -21,14 +21,22 @@ class KycRepository @Inject constructor(
         idCardImage: MultipartBody.Part,
         selfieImage: MultipartBody.Part
     ): APIResponse<KYCResponse> {
-        val fullNameBody = fullName.toRequestBody(MultipartBody.FORM)
-        val dobBody = dob.toRequestBody(MultipartBody.FORM)
-        val addressBody = address.toRequestBody(MultipartBody.FORM)
+        return try {
+            val fullNameBody = fullName.toRequestBody(MultipartBody.FORM)
+            val dobBody = dob.toRequestBody(MultipartBody.FORM)
+            val addressBody = address.toRequestBody(MultipartBody.FORM)
 
-        return kycService.submitKYC(fullNameBody, dobBody, addressBody, idCardImage, selfieImage)
+            kycService.submitKYC(fullNameBody, dobBody, addressBody, idCardImage, selfieImage)
+        } catch (e: Exception) {
+            APIResponse(success = false, message = e.localizedMessage ?: "KYC submission failed")
+        }
     }
 
     suspend fun getKYC(): APIResponse<KYCResponse> {
-        return kycService.getKYC()
+        return try {
+            kycService.getKYC()
+        } catch (e: Exception) {
+            APIResponse(success = false, message = e.localizedMessage ?: "Failed to fetch KYC status")
+        }
     }
 }

@@ -32,4 +32,6 @@ interface AuthApiService {
     @PUT("me")
     suspend fun updateProfile(@Body request: UserProfileRequest): APIResponse<UserResponse>
 
+    @POST("me/fcm-token")
+    suspend fun updateFcmToken(@Body request: FcmTokenRequest): APIResponse<Unit>
 }

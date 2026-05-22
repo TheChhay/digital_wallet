@@ -2,14 +2,12 @@ package com.app.digitalwallet.data
 
 import com.app.digitalwallet.api.WalletApiService
 import com.app.digitalwallet.api.dto.MoneyRequest
-import com.app.digitalwallet.api.dto.TransferMoneyRequest
 import com.app.digitalwallet.api.dto.TransactionDto
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.UUID
+import com.app.digitalwallet.api.dto.TransferMoneyRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,19 +23,20 @@ data class WalletInfo(
 class WalletRepository @Inject constructor(private val apiService: WalletApiService) {
 
     fun getWalletInfo(): Flow<WalletInfo> = flow {
-        val response = apiService.getWalletInfo()
-        if (response.success && response.data != null) {
-            val dto = response.data
-            
-            emit(WalletInfo(
-                balance = dto.balanceCents / 100.0,
-                walletId = dto.walletId,
-                currency = dto.currency ?: "USD",
-                monthlyGrowth = dto.monthlyGrowth ?: 0.0,
-                recentTransactions = emptyList() // Now fetched via getAllTransactions
-            ))
-        } else {
-            throw Exception(response.message)
+        try {
+            val response = apiService.getWalletInfo()
+            if (response.success && response.data != null) {
+                val dto = response.data
+                emit(WalletInfo(
+                    balance = dto.balanceCents / 100.0,
+                    walletId = dto.walletId,
+                    currency = dto.currency ?: "USD",
+                    monthlyGrowth = dto.monthlyGrowth ?: 0.0,
+                    recentTransactions = emptyList()
+                ))
+            }
+        } catch (e: Exception) {
+            // Handle error (optionally rethrow or emit a default)
         }
     }
 
@@ -48,47 +47,49 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
     )
 
     fun getAllTransactions(cursor: String? = null): Flow<TransactionsPage> = flow {
-        val response = apiService.getAllTransactions(cursor)
-        if (response.success && response.data != null) {
-            val dto = response.data
-            val list = dto.items?.map { it.toDomain() } ?: emptyList()
-            emit(TransactionsPage(
-                transactions = list,
-                nextCursor = dto.nextCursor,
-                hasMore = dto.hasMore ?: false
-            ))
-        } else {
+        try {
+            val response = apiService.getAllTransactions(cursor)
+            if (response.success && response.data != null) {
+                val dto = response.data
+                val list = dto.items?.map { it.toDomain() } ?: emptyList()
+                emit(TransactionsPage(
+                    transactions = list,
+                    nextCursor = dto.nextCursor,
+                    hasMore = dto.hasMore ?: false
+                ))
+            } else {
+                emit(TransactionsPage(emptyList(), null, false))
+            }
+        } catch (e: Exception) {
             emit(TransactionsPage(emptyList(), null, false))
         }
     }
 
     suspend fun transferMoney(recipientPhone: String? = null, walletId: String? = null, amount: Double, note: String?): Boolean {
-        val amountCents = (amount * 100).toLong()
-        val idempotencyKey = UUID.randomUUID().toString()
-        val response = apiService.transferMoney(TransferMoneyRequest(
-            receiverPhone = recipientPhone,
-            receiverWalletId = walletId,
-            amountCents = amountCents,
-            description = note,
-            idempotencyKey = idempotencyKey
-        ))
-        return response.success
+        return try {
+            val amountCents = (amount * 100).toLong()
+            val idempotencyKey = UUID.randomUUID().toString()
+            val response = apiService.transferMoney(TransferMoneyRequest(
+                receiverPhone = recipientPhone,
+                receiverWalletId = walletId,
+                amountCents = amountCents,
+                description = note,
+                idempotencyKey = idempotencyKey
+            ))
+            response.success
+        } catch (e: Exception) {
+            false
+        }
     }
 
-    suspend fun findUserByWalletId(phone: String? = null, walletId: String? = null): RecipientLookupResult? {
+    suspend fun lookupRecipient(phone: String? = null, walletId: String? = null): RecipientLookupResult? {
         return try {
-            val response = if (walletId != null) {
-                apiService.findUserByWalletId(walletId)
-            } else {
-                apiService.lookupRecipient(phone ?: "")
-            }
-
+            val response = apiService.lookupRecipient(walletId = walletId, phone = phone)
             if (response.success && response.data != null) {
                 RecipientLookupResult(
                     fullName = response.data.fullName,
                     phone = response.data.phone,
                     id = response.data.id
-
                 )
             } else {
                 null
@@ -105,21 +106,27 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
     )
 
     suspend fun deposit(amount: Double): Boolean {
-        val amountCents = (amount * 100).toLong()
-        val response = apiService.deposit(MoneyRequest(amountCents = amountCents))
-        return response.success
+        return try {
+            val amountCents = (amount * 100).toLong()
+            val response = apiService.deposit(MoneyRequest(amountCents = amountCents))
+            response.success
+        } catch (e: Exception) {
+            false
+        }
     }
 
     suspend fun withdraw(amount: Double): Boolean {
-        val amountCents = (amount * 100).toLong()
-        val response = apiService.withdraw(MoneyRequest(amountCents = amountCents))
-        return response.success
+        return try {
+            val amountCents = (amount * 100).toLong()
+            val response = apiService.withdraw(MoneyRequest(amountCents = amountCents))
+            response.success
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun TransactionDto.toDomain(): Transaction {
         val finalAmount = amount ?: ((amountCents ?: 0L) / 100.0)
-        
-        // Handle possible missing date/time from backend
         val displayDate = date ?: createdAt?.split("T")?.getOrNull(0) ?: "Today"
         val displayTime = time ?: createdAt?.split("T")?.getOrNull(1)?.take(5) ?: "00:00"
 
@@ -131,7 +138,6 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
             else -> "Transaction"
         }
 
-        // Mock logic for missing receiver name in transfers
         val effectiveReceiverName = if (transactionType == "transfer" && receiverName.isNullOrBlank()) {
             "Unknown Recipient" 
         } else {

@@ -190,3 +190,44 @@ func (r *Repository) FindQRTokenByToken(tokenStr string) (*models.QRToken, error
 func (r *Repository) MarkQRTokenUsed(id uuid.UUID) error {
 	return r.db.Model(&models.QRToken{}).Where("id = ?", id).Update("is_used", true).Error
 }
+
+func (r *Repository) UpdateUserFCMToken(userID uuid.UUID, fcmToken string) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("fcm_token", fcmToken).Error
+}
+
+func (r *Repository) GetUserFCMToken(userID uuid.UUID) (string, error) {
+	var user models.User
+	err := r.db.Select("fcm_token").First(&user, "id = ?", userID).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
+	return user.FCMToken, nil
+}
+
+func (r *Repository) CreateNotification(notification *models.Notification) error {
+	return r.db.Create(notification).Error
+}
+
+func (r *Repository) MarkNotificationAsPushed(notificationID uuid.UUID) error {
+	return r.db.Model(&models.Notification{}).
+		Where("id = ?", notificationID).
+		Update("is_pushed", true).Error
+}
+
+func (r *Repository) GetNotificationsByUserID(userID uuid.UUID, limit int) ([]models.Notification, error) {
+	var notifications []models.Notification
+	err := r.db.Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&notifications).Error
+	return notifications, err
+}
+
+func (r *Repository) MarkNotificationAsRead(notificationID uuid.UUID) error {
+	return r.db.Model(&models.Notification{}).
+		Where("id = ?", notificationID).
+		Update("is_read", true).Error
+}

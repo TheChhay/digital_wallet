@@ -22,12 +22,12 @@ interface WalletApiService {
 
     @GET("wallet/transactions")
     suspend fun getAllTransactions(@Query("cursor") cursor: String? = null): APIResponse<TransactionsResponse>
-
-    @GET("wallet/recipient-lookup")
-    suspend fun lookupRecipient(@Query("phone") phone: String): APIResponse<RecipientLookupDto>
-
-    @GET("wallet/get-userinfo-by-wallet-id")
-    suspend fun findUserByWalletId(@Query("wallet_id") walletId: String): APIResponse<RecipientLookupDto>
+    
+    @GET("wallet/lookup-recipient")
+    suspend fun lookupRecipient(
+        @Query("wallet_id") walletId: String? = null,
+        @Query("phone") phone: String? = null
+    ): APIResponse<RecipientLookupDto>
 
     @POST("wallet/transfer")
     suspend fun transferMoney(@Body request: TransferMoneyRequest): APIResponse<TransactionResponse>
