@@ -34,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import com.app.digitalwallet.data.Transaction
-import com.app.digitalwallet.data.WalletInfo
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import com.app.digitalwallet.viewmodel.AuthViewModel
@@ -138,7 +137,7 @@ fun HomeScreen(
                 HomeContent(
                     modifier = Modifier.padding(innerPadding),
                     viewModel = viewModel,
-                    walletInfo = state.walletInfo,
+                    uiState = state,
                     todayTransactions = todayTransactions,
                     onTransactionClick = { transaction ->
                         selectedTransaction = transaction
@@ -181,7 +180,7 @@ fun HomeScreen(
 fun HomeContent(
     modifier: Modifier = Modifier,
     viewModel: WalletViewModel,
-    walletInfo: WalletInfo,
+    uiState: WalletUiState.Success,
     todayTransactions: List<Transaction>,
     onTransactionClick: (Transaction) -> Unit,
     onNavigateToTransfer: () -> Unit,
@@ -193,10 +192,8 @@ fun HomeContent(
     var isRefreshing by remember { mutableStateOf(false) }
     
     // Reset isRefreshing when uiState changes from Loading
-    androidx.compose.runtime.LaunchedEffect(viewModel.uiState.collectAsState().value) {
-        if (viewModel.uiState.value !is WalletUiState.Loading) {
-            isRefreshing = false
-        }
+    LaunchedEffect(uiState) {
+        isRefreshing = false
     }
     
     PullToRefreshBox(
@@ -217,7 +214,7 @@ fun HomeContent(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 1. Total Balance Card
-            BalanceCard(walletInfo.balance)
+            BalanceCard(uiState.walletInfo.balance)
 
             Spacer(modifier = Modifier.height(24.dp))
 

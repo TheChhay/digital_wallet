@@ -2,15 +2,18 @@ package com.app.digitalwallet.data
 
 import com.app.digitalwallet.api.AuthApiService
 import com.app.digitalwallet.api.dto.*
+import com.app.digitalwallet.auth.SessionManager
 import com.app.digitalwallet.auth.TokenManager
 import okhttp3.MultipartBody
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AuthRepository @Inject constructor(
     private val authApi: AuthApiService,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val sessionManager: SessionManager
 ) {
 
     suspend fun login(request: LoginRequest): APIResponse<AuthResponse> {
@@ -49,6 +52,10 @@ class AuthRepository @Inject constructor(
         return try {
             authApi.getMe()
         } catch (e: Exception) {
+            if (e is HttpException && e.code() == 404) {
+                tokenManager.clearTokens()
+                sessionManager.triggerLogout()
+            }
             APIResponse(success = false, message = e.localizedMessage ?: "Failed to fetch profile")
         }
     }
@@ -69,6 +76,17 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun getNotification(): APIResponse<NotificationResponse>{
+        return try {
+            authApi.getNotification()
+        } catch (e: Exception){
+            if (e is HttpException && e.code() == 404) {
+                tokenManager.clearTokens()
+                sessionManager.triggerLogout()
+            }
+            APIResponse(success = false, message = e.localizedMessage ?: "Failed to get notification")
+        }
+    }
 
     fun logout() {
         tokenManager.clearTokens()

@@ -6,6 +6,7 @@ import com.app.digitalwallet.data.Transaction
 import com.app.digitalwallet.data.WalletInfo
 import com.app.digitalwallet.data.WalletRepository
 import com.app.digitalwallet.util.NotificationHelper
+import com.app.digitalwallet.util.RefreshEventBus
 import com.app.digitalwallet.utils.PhoneNumberUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +25,8 @@ import javax.inject.Inject
 @HiltViewModel
 class WalletViewModel @Inject constructor(
     private val repository: WalletRepository,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val refreshEventBus: RefreshEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WalletUiState>(WalletUiState.Loading)
@@ -50,6 +52,19 @@ class WalletViewModel @Inject constructor(
 
     init {
         refresh()
+        observeRefreshEvents()
+    }
+
+    private fun observeRefreshEvents() {
+        viewModelScope.launch {
+            refreshEventBus.refreshEvents.collect { type ->
+                when (type) {
+                    RefreshEventBus.RefreshType.WALLET -> loadWalletData()
+                    RefreshEventBus.RefreshType.TRANSACTIONS -> loadTransactions()
+                    RefreshEventBus.RefreshType.ALL -> refresh()
+                }
+            }
+        }
     }
 
     fun resetTransferStatus() {

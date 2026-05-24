@@ -83,6 +83,9 @@ func (r *Repository) GetWalletWithUserByWalletID(walletID uuid.UUID) (*models.Wa
 func (r *Repository) GetWalletForUpdate(userID uuid.UUID) (*models.Wallet, error) {
 	var wallet models.Wallet
 	err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&wallet, "user_id = ?", userID).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
 	return &wallet, err
 }
 

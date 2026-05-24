@@ -59,4 +59,15 @@ data class FcmTokenRequest(
     @SerialName("fcm_token") val fcmToken: String
 )
 
+@Serializable
+data class NotificationResponse(
+    val id: String,
+    val type: String,
+    val title: String,
+    val message: String,
+    val amount: Float,
+    @SerialName("related_tx_id") val relatedTxID: String,
+    @SerialName("is_read") val isRead: Boolean,
+    @SerialName("created_at") val createdAt: String
 
+)

@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.app.digitalwallet.MainActivity
 import com.app.digitalwallet.R
 import com.app.digitalwallet.data.AuthRepository
+import com.app.digitalwallet.util.RefreshEventBus
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
@@ -25,6 +26,9 @@ class WalletNotificationService : FirebaseMessagingService() {
 
     @Inject
     lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var refreshEventBus: RefreshEventBus
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -50,12 +54,30 @@ class WalletNotificationService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
 
-        // Handle data payload
-        if (remoteMessage.data.isNotEmpty()) {
+        // 1. You can fetch full notification details from the API
+        // This ensures you have the latest data (e.g. amount, transaction ID)
+        serviceScope.launch {
+            try {
+                val response = authRepository.getNotification()
+                if (response.success && response.data != null) {
+                    val notification = response.data
+                    // Use the rich data from the API
+                    handleNotification(
+                        type = notification.type,
+                        title = notification.title,
+                        message = notification.message // or enrichment like "${notification.message} - $${notification.amount}"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch notification details", e)
+            }
+        }
+
+        // 2. Fallback or standard handling for data payload
+        if (remoteMessage.data.isNotEmpty() && remoteMessage.data["type"] != "sync") {
             val type = remoteMessage.data["type"]
             val title = remoteMessage.data["title"] ?: getString(R.string.app_name)
             val message = remoteMessage.data["message"] ?: ""
-
             handleNotification(type, title, message)
         }
 
@@ -66,6 +88,11 @@ class WalletNotificationService : FirebaseMessagingService() {
     }
 
     private fun handleNotification(type: String?, title: String, message: String) {
+        // Trigger UI refresh when a notification is received
+        serviceScope.launch {
+            refreshEventBus.emitRefresh(RefreshEventBus.RefreshType.ALL)
+        }
+
         // Specific logic based on wallet notification types
         when (type) {
             "transaction_alert", "low_balance" -> {

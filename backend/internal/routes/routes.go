@@ -45,6 +45,9 @@ func Setup(cfg *config.Config, logger *zap.Logger, h *handlers.Handler) *gin.Eng
 		me.GET("/kyc", h.GetKYC)
 		me.POST("/kyc", h.SubmitKYC)
 		me.PUT("/profile", h.UpdateProfile)
+		// notifications
+		me.POST("/fcm-token", h.RegisterFCMToken)
+		me.GET("/notifications", h.GetNotifications)
 
 		wallet := v1.Group("/wallet", middleware.Auth(cfg))
 		wallet.GET("", h.Wallet)
@@ -66,10 +69,6 @@ func Setup(cfg *config.Config, logger *zap.Logger, h *handlers.Handler) *gin.Eng
 		qr.POST("/generate", h.GenerateQR)
 		qr.POST("/validate", h.ValidateQR)
 		qr.GET("/static", h.GetStaticQR)
-
-		users := v1.Group("/users", middleware.Auth(cfg))
-		users.POST("/fcm-token", h.RegisterFCMToken)
-		users.GET("/notifications", h.GetNotifications)
 	}
 	return r
 }

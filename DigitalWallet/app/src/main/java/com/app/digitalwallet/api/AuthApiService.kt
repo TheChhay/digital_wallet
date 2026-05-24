@@ -34,4 +34,7 @@ interface AuthApiService {
 
     @POST("me/fcm-token")
     suspend fun updateFcmToken(@Body request: FcmTokenRequest): APIResponse<Unit>
+
+    @GET("me/notifications")
+    suspend fun getNotification(): APIResponse<NotificationResponse>
 }

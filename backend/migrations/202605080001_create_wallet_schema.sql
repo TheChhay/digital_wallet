@@ -130,7 +130,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     related_tx_id UUID REFERENCES transactions(id),
     is_read       BOOLEAN DEFAULT FALSE,
     is_pushed     BOOLEAN DEFAULT FALSE,  -- FCM sent or not
-    created_at    TIMESTAMP DEFAULT NOW()
+    created_at    TIMESTAMP DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_qr_tokens_wallet ON qr_tokens(wallet_id);

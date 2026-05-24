@@ -31,7 +31,7 @@
         </activity>
 
         <service
-            android:name=".fcm.MyFirebaseMessagingService"
+            android:name=".fcm.WalletNotificationService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
