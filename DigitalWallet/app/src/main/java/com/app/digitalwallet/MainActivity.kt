@@ -184,6 +184,7 @@ fun MainScreen() {
                 com.app.digitalwallet.ui.screens.RegisterScreen(
                     viewModel = authViewModel,
                     onRegisterSuccess = {
+                        walletViewModel.refresh()
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Register.route) { inclusive = true }
                         }

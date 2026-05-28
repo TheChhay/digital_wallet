@@ -81,6 +81,20 @@ The main API prefix is:
 - Generate, validate, and scan QR payment data
 - Admin login, user review, KYC review, and account status management
 
+## App Screenshots
+
+Screenshots from the Android client (stored in `screenshots/`):
+
+![Home Screen](screenshots/home.png)
+![Wallet Screen](screenshots/wallet.png)
+![Transaction History](screenshots/history.png)
+![Profile Screen](screenshots/profile.png)
+![Request Payment QR](screenshots/request_payment_qr.png)
+![Scan QR](screenshots/scan_qr.png)
+![My QR](screenshots/my_qr.png)
+![Transfer Money](screenshots/transfer_money.png)
+![Notification Permission Prompt](screenshots/ask_notification_permision.png)
+
 ## Backend Architecture
 
 The backend uses a handler/service/repository structure:

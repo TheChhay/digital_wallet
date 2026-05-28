@@ -153,8 +153,14 @@ fun HomeScreen(
                 )
             }
             is WalletUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = state.message, color = Color.Red)
+                Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = state.message, color = Color.Red, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.refresh() }) {
+                            Text("Retry")
+                        }
+                    }
                 }
             }
         }

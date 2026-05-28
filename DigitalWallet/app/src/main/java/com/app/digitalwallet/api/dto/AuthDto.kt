@@ -22,7 +22,8 @@ data class LoginRequest(
 data class RegisterRequest(
     val phone: String,
     val password: String,
-    @SerialName("full_name") val fullName: String
+    @SerialName("first_name") val firstName: String,
+    @SerialName("last_name") val lastName: String,
 )
 
 @Serializable

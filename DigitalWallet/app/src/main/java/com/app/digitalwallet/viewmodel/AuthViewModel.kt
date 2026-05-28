@@ -96,12 +96,12 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun register(phone: String, fullName: String, password: String, onRegisterSuccess: () -> Unit) {
+    fun register(phone: String, firstName: String, lastName: String, password: String, onRegisterSuccess: () -> Unit) {
         viewModelScope.launch {
             registerUiState = registerUiState.copy(isLoading = true, error = null)
             val normalizedPhone = PhoneNumberUtils.normalize(phone)
             try {
-                val response = repository.register(RegisterRequest(normalizedPhone, password, fullName))
+                val response = repository.register(RegisterRequest(normalizedPhone, password, firstName, lastName))
                 if (response.success) {
                     registerUiState = registerUiState.copy(isLoading = false)
                     onRegisterSuccess()

@@ -32,9 +32,17 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun register(request: RegisterRequest): APIResponse<Unit> {
+    suspend fun register(request: RegisterRequest): APIResponse<AuthResponse> {
         return try {
-            authApi.register(request)
+            val response = authApi.register(request)
+            if (response.success && response.data != null) {
+                tokenManager.saveTokens(
+                    response.data.accessToken,
+                    response.data.refreshToken,
+                    response.data.user.phone
+                )
+            }
+            response
         } catch (e: Exception) {
             APIResponse(success = false, message = e.localizedMessage ?: "Registration failed")
         }

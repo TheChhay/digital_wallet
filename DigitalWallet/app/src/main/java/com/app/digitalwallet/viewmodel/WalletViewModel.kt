@@ -78,16 +78,18 @@ class WalletViewModel @Inject constructor(
         loadTransactions()
     }
 
+    private var loadWalletJob: kotlinx.coroutines.Job? = null
+
     private fun loadWalletData() {
-        viewModelScope.launch {
+        loadWalletJob?.cancel()
+        loadWalletJob = viewModelScope.launch {
             _uiState.value = WalletUiState.Loading
-            repository.getWalletInfo()
-                .catch { e ->
-                    _uiState.value = WalletUiState.Error(e.message ?: "Failed to load wallet info")
-                }
-                .collect { walletInfo ->
-                    _uiState.value = WalletUiState.Success(walletInfo)
-                }
+            try {
+                val walletInfo = repository.getWalletInfoSync()
+                _uiState.value = WalletUiState.Success(walletInfo)
+            } catch (e: Exception) {
+                _uiState.value = WalletUiState.Error(e.message ?: "Failed to load wallet info")
+            }
         }
     }
 

@@ -22,22 +22,24 @@ data class WalletInfo(
 @Singleton
 class WalletRepository @Inject constructor(private val apiService: WalletApiService) {
 
-    fun getWalletInfo(): Flow<WalletInfo> = flow {
-        try {
-            val response = apiService.getWalletInfo()
-            if (response.success && response.data != null) {
-                val dto = response.data
-                emit(WalletInfo(
-                    balance = dto.balanceCents / 100.0,
-                    walletId = dto.walletId,
-                    currency = dto.currency ?: "USD",
-                    monthlyGrowth = dto.monthlyGrowth ?: 0.0,
-                    recentTransactions = emptyList()
-                ))
-            }
-        } catch (e: Exception) {
-            // Handle error (optionally rethrow or emit a default)
+    suspend fun getWalletInfoSync(): WalletInfo {
+        val response = apiService.getWalletInfo()
+        if (response.success && response.data != null) {
+            val dto = response.data
+            return WalletInfo(
+                balance = dto.balanceCents / 100.0,
+                walletId = dto.walletId,
+                currency = dto.currency ?: "USD",
+                monthlyGrowth = dto.monthlyGrowth ?: 0.0,
+                recentTransactions = emptyList()
+            )
+        } else {
+            throw Exception(response.message)
         }
+    }
+
+    fun getWalletInfo(): Flow<WalletInfo> = flow {
+        emit(getWalletInfoSync())
     }
 
     data class TransactionsPage(
@@ -60,7 +62,7 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
             } else {
                 emit(TransactionsPage(emptyList(), null, false))
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emit(TransactionsPage(emptyList(), null, false))
         }
     }
@@ -77,7 +79,7 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
                 idempotencyKey = idempotencyKey
             ))
             response.success
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -94,7 +96,7 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
             } else {
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -110,7 +112,7 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
             val amountCents = (amount * 100).toLong()
             val response = apiService.deposit(MoneyRequest(amountCents = amountCents))
             response.success
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -120,7 +122,7 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
             val amountCents = (amount * 100).toLong()
             val response = apiService.withdraw(MoneyRequest(amountCents = amountCents))
             response.success
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }

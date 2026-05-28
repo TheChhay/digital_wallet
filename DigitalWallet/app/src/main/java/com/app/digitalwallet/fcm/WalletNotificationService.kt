@@ -137,7 +137,7 @@ class WalletNotificationService : FirebaseMessagingService() {
         )
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Use a proper icon in real app
+            .setSmallIcon(R.drawable.app_icon)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(if (isHighPriority) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)

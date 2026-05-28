@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +23,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -42,6 +46,9 @@ fun RegisterScreen(
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var validationError by remember { mutableStateOf<String?>(null) }
 
     val uiState = viewModel.registerUiState
 
@@ -141,8 +148,21 @@ fun RegisterScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     ZenTextField(
                         value = password,
-                        onValueChange = { password = it },
+                        onValueChange = { 
+                            password = it 
+                            validationError = null
+                        },
                         placeholder = "••••••••",
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        },
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                     )
 
@@ -152,8 +172,21 @@ fun RegisterScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     ZenTextField(
                         value = confirmPassword,
-                        onValueChange = { confirmPassword = it },
+                        onValueChange = { 
+                            confirmPassword = it 
+                            validationError = null
+                        },
                         placeholder = "••••••••",
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        },
                         leadingIcon = { Icon(Icons.Default.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                     )
 
@@ -162,21 +195,30 @@ fun RegisterScreen(
                     PrimaryButton(
                         text = if (uiState.isLoading) "Signing Up..." else "Sign Up",
                         onClick = {
-                            if (phoneNumber.isNotBlank() && password.isNotBlank() && password == confirmPassword) {
-                                viewModel.register(
-                                    phone = phoneNumber,
-                                    fullName = "$firstName $lastName",
-                                    password = password,
-                                    onRegisterSuccess = onRegisterSuccess
-                                )
+                            if (phoneNumber.isNotBlank() && password.isNotBlank() && firstName.isNotBlank() && lastName.isNotBlank()) {
+                                if (password.length < 8) {
+                                    validationError = "Password must be at least 8 characters"
+                                } else if (password != confirmPassword) {
+                                    validationError = "Passwords do not match"
+                                } else {
+                                    viewModel.register(
+                                        phone = phoneNumber,
+                                        firstName = firstName,
+                                        lastName = lastName,
+                                        password = password,
+                                        onRegisterSuccess = onRegisterSuccess
+                                    )
+                                }
+                            } else {
+                                validationError = "Please fill in all fields"
                             }
                         },
                         enabled = !uiState.isLoading
                     )
 
-                    if (uiState.error != null) {
+                    if (uiState.error != null || validationError != null) {
                         Text(
-                            text = uiState.error,
+                            text = validationError ?: uiState.error ?: "",
                             color = MaterialTheme.colorScheme.error,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
