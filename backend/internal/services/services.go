@@ -31,9 +31,9 @@ var (
 )
 
 type Service struct {
-	repo                 *repositories.Repository
-	cfg                  *config.Config
-	notificationService  *NotificationService
+	repo                *repositories.Repository
+	cfg                 *config.Config
+	notificationService *NotificationService
 }
 
 func New(repo *repositories.Repository, cfg *config.Config) *Service {
@@ -685,12 +685,13 @@ func mapTransaction(txn models.Transaction, viewerID uuid.UUID) dto.TransactionR
 
 	switch txn.Type {
 	case models.TransactionTransfer:
+		if txn.Sender != nil {
+			resp.SenderName = fmt.Sprintf("%s %s", txn.Sender.FirstName, txn.Sender.LastName)
+			resp.SenderPhone = txn.Sender.Phone
+		}
 		if txn.Receiver != nil {
 			resp.ReceiverName = fmt.Sprintf("%s %s", txn.Receiver.FirstName, txn.Receiver.LastName)
 			resp.ReceiverPhone = txn.Receiver.Phone
-		}
-		if txn.Sender != nil {
-			resp.MerchantName = fmt.Sprintf("%s %s", txn.Sender.FirstName, txn.Sender.LastName)
 		}
 		// Positive if the viewer is the receiver
 		if viewerID != uuid.Nil && txn.ReceiverID != nil {
@@ -810,11 +811,11 @@ func (s *Service) sendTransferNotifications(ctx context.Context, senderID uuid.U
 		}
 		if err := s.repo.CreateNotification(notif); err == nil {
 			payload := NotificationPayload{
-				Title:       notif.Title,
-				Message:     notif.Message,
-				Type:        models.NotificationMoneyReceived,
-				Amount:      notif.Amount,
-				SenderName:  &receiverName,
+				Title:      notif.Title,
+				Message:    notif.Message,
+				Type:       models.NotificationMoneyReceived,
+				Amount:     notif.Amount,
+				SenderName: &receiverName,
 			}
 			if _, err := s.notificationService.SendNotification(ctx, receiver.FCMToken, payload); err == nil {
 				s.repo.MarkNotificationAsPushed(notif.ID)

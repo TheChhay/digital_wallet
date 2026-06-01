@@ -53,12 +53,13 @@ fun TransactionItem(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                val title = if (!transaction.receiverName.isNullOrBlank()) {
-                    transaction.receiverName
-                } else if (transaction.merchantName.isNotBlank()) {
-                    transaction.merchantName
-                } else {
-                    transaction.category
+                val title = when {
+                    transaction.isPositive && !transaction.senderName.isNullOrBlank() -> transaction.senderName
+                    !transaction.isPositive && !transaction.receiverName.isNullOrBlank() -> transaction.receiverName
+                    transaction.merchantName.isNotBlank() && transaction.merchantName != "Unknown" -> transaction.merchantName
+                    !transaction.senderName.isNullOrBlank() -> transaction.senderName
+                    !transaction.receiverName.isNullOrBlank() -> transaction.receiverName
+                    else -> transaction.category
                 }
 
                 Text(
@@ -67,9 +68,16 @@ fun TransactionItem(
                     fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                
+                val phoneInfo = if (transaction.isPositive) {
+                    transaction.senderPhone ?: transaction.receiverPhone
+                } else {
+                    transaction.receiverPhone ?: transaction.senderPhone
+                }
+                
                 Text(
-                    text = if (!transaction.receiverPhone.isNullOrBlank()) {
-                        "${transaction.receiverPhone} • ${transaction.time}"
+                    text = if (!phoneInfo.isNullOrBlank()) {
+                        "$phoneInfo • ${transaction.time}"
                     } else {
                         subtitle
                     },

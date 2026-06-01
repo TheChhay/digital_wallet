@@ -20,6 +20,8 @@ data class Transaction(
     val merchantName: String = "Unknown",
     val receiverName: String? = null,
     val receiverPhone: String? = null,
+    val senderPhone: String? = null,
+    val senderName: String? = null,
     val reference: String? = null,
     val category: String = "General",
     val amount: Double = 0.0,

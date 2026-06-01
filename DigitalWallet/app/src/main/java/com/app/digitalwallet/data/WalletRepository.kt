@@ -153,6 +153,8 @@ class WalletRepository @Inject constructor(private val apiService: WalletApiServ
                 ?: fallbackName,
             receiverName = effectiveReceiverName.takeIf { !it.isNullOrBlank() },
             receiverPhone = receiverPhone.takeIf { !it.isNullOrBlank() },
+            senderName = senderName.takeIf { !it.isNullOrBlank() },
+            senderPhone = senderPhone.takeIf { !it.isNullOrBlank() },
             reference = reference,
             category = category ?: type?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "General",
             amount = finalAmount,

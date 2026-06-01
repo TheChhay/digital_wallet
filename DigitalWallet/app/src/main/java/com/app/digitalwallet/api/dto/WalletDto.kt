@@ -31,6 +31,8 @@ data class TransactionDto(
     @SerialName("merchant_name") val merchantName: String? = null,
     @SerialName("receiver_name") val receiverName: String? = null,
     @SerialName("receiver_phone") val receiverPhone: String? = null,
+    @SerialName("sender_name") val senderName: String? = null,
+    @SerialName("sender_phone") val senderPhone: String? = null,
     val category: String? = null,
     val amount: Double? = null,
     val date: String? = null,

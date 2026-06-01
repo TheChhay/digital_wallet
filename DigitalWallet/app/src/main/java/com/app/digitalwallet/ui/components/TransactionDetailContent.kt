@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,8 +55,8 @@ fun TransactionDetailContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val title = if (!transaction.receiverName.isNullOrBlank()) {
-            transaction.receiverName
+        val title = if (!transaction.senderName.isNullOrBlank()) {
+            transaction.senderName
         } else transaction.merchantName.ifBlank {
             transaction.category
         }
@@ -66,9 +67,9 @@ fun TransactionDetailContent(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        if (!transaction.receiverPhone.isNullOrBlank()) {
+        if (!transaction.senderPhone.isNullOrBlank()) {
             Text(
-                transaction.receiverPhone,
+                transaction.senderPhone,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
@@ -85,7 +86,7 @@ fun TransactionDetailContent(
             text = (if (transaction.isPositive) "+" else "-") + "$${String.format(Locale.US, "%,.2f", transaction.amount)}",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.error
+            color = if (transaction.isPositive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
         )
 
         Spacer(modifier = Modifier.height(32.dp))

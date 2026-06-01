@@ -154,6 +154,8 @@ type TransactionResponse struct {
 	MerchantName  string     `json:"merchant_name,omitempty"`
 	ReceiverName  string     `json:"receiver_name,omitempty"`
 	ReceiverPhone string     `json:"receiver_phone,omitempty"`
+	SenderName    string     `json:"sender_name,omitempty"`
+	SenderPhone   string     `json:"sender_phone,omitempty"`
 	IsPositive    *bool      `json:"is_positive,omitempty"`
 }
 
