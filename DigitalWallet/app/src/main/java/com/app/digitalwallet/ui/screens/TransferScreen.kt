@@ -42,6 +42,8 @@ import com.app.digitalwallet.viewmodel.WalletUiState
 import com.app.digitalwallet.viewmodel.WalletViewModel
 import java.util.Locale
 
+import com.app.digitalwallet.viewmodel.WalletUiEffect
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransferScreen(
@@ -79,6 +81,33 @@ fun TransferScreen(
         } ?: "0")
     }
 
+    // When coming from QR scan, recipient is already validated — no phone lookup needed.
+    // The Continue button is enabled if QR payment is pending OR manual entry is valid.
+    val isFromQR = payment != null
+    val hasRecipient = isFromQR || phoneNumber.isNotEmpty()
+
+    // Handle UI effects
+    LaunchedEffect(viewModel) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is WalletUiEffect.TransferSuccess -> {
+                    val displayName = when {
+                        confirmedRecipientName.isNotEmpty() && confirmedRecipientName != "null null" -> confirmedRecipientName
+                        isFromQR -> payment?.recipientName ?: "QR Recipient"
+                        else -> confirmedRecipientPhone
+                    }
+                    qrViewModel.clearPendingPayment()
+                    showConfirmDialog = false
+                    onNavigateToSuccess(amount, displayName)
+                }
+                is WalletUiEffect.ShowError -> {
+                    // Handled via transferStatus
+                }
+                else -> {} // Ignore other effects like DepositSuccess, WithdrawSuccess
+            }
+        }
+    }
+
     // If QR data arrives (e.g. screen re-entered), sync amount and recipient
     LaunchedEffect(payment) {
         payment?.let { p ->
@@ -109,11 +138,6 @@ fun TransferScreen(
     val amountDouble = amount.toDoubleOrNull() ?: 0.0
     val isInsufficientFunds = amountDouble > balance
     val isAmountValid = amountDouble > 0 && !isInsufficientFunds
-
-    // When coming from QR scan, recipient is already validated — no phone lookup needed.
-    // The Continue button is enabled if QR payment is pending OR manual entry is valid.
-    val isFromQR = payment != null
-    val hasRecipient = isFromQR || phoneNumber.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -504,20 +528,9 @@ fun TransferScreen(
                                     walletId = payment?.recipientId,
                                     amount = amountDouble,
                                     note = note
-                                ) { success ->
-                                    if (success) {
-                                        qrViewModel.clearPendingPayment()
-                                        showConfirmDialog = false
-                                        onNavigateToSuccess(amount, displayName)
-                                    }
-                                }
+                                )
                             } else {
-                                viewModel.transferMoney(phone = confirmedRecipientPhone, amount = amountDouble, note = note) { success ->
-                                    if (success) {
-                                        showConfirmDialog = false
-                                        onNavigateToSuccess(amount, displayName)
-                                    }
-                                }
+                                viewModel.transferMoney(phone = confirmedRecipientPhone, amount = amountDouble, note = note)
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),

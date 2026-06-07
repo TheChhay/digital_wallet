@@ -50,6 +50,8 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.FileOutputStream
 
+import com.app.digitalwallet.viewmodel.AuthUiEffect
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -64,6 +66,18 @@ fun ProfileScreen(
     val uploadState = authViewModel.uploadProfileImageUiState
     val userProfile = authViewModel.userProfile
     val userPhone = remember { TokenManager.getInstance(context).getUserPhone() ?: "User" }
+
+    // Handle UI effects
+    LaunchedEffect(authViewModel) {
+        authViewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is AuthUiEffect.ProfileUpdated -> {
+                    Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                }
+                else -> {}
+            }
+        }
+    }
 
     val fullImageUrl = remember(userProfile?.profileImageUrl) {
         val path = userProfile?.profileImageUrl
@@ -98,9 +112,7 @@ fun ProfileScreen(
                     val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
                     val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
                     
-                    authViewModel.updateProfileImage(body) {
-                        Toast.makeText(context, "Profile image updated successfully", Toast.LENGTH_SHORT).show()
-                    }
+                    authViewModel.updateProfileImage(body)
                 } catch (e: Exception) {
                     Toast.makeText(context, "Error processing image: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
                 }

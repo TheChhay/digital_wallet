@@ -5,13 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.app.digitalwallet.data.Transaction
 import com.app.digitalwallet.data.WalletInfo
 import com.app.digitalwallet.data.WalletRepository
-import com.app.digitalwallet.util.NotificationHelper
-import com.app.digitalwallet.util.RefreshEventBus
+import com.app.digitalwallet.utils.RefreshEventBus
+import com.app.digitalwallet.utils.NotificationHelper
 import com.app.digitalwallet.utils.PhoneNumberUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -22,6 +24,13 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+sealed class WalletUiEffect {
+    object TransferSuccess : WalletUiEffect()
+    object DepositSuccess : WalletUiEffect()
+    object WithdrawSuccess : WalletUiEffect()
+    data class ShowError(val message: String) : WalletUiEffect()
+}
+
 @HiltViewModel
 class WalletViewModel @Inject constructor(
     private val repository: WalletRepository,
@@ -31,6 +40,9 @@ class WalletViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<WalletUiState>(WalletUiState.Loading)
     val uiState: StateFlow<WalletUiState> = _uiState.asStateFlow()
+
+    private val _uiEffect = MutableSharedFlow<WalletUiEffect>()
+    val uiEffect = _uiEffect.asSharedFlow()
 
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
     val transactions: StateFlow<List<Transaction>> = _transactions.asStateFlow()
@@ -121,11 +133,11 @@ class WalletViewModel @Inject constructor(
 //        }
 //    }
 
-    fun transferMoney(phone: String? = null, walletId: String? = null, amount: Double, note: String?, onComplete: (Boolean) -> Unit) {
+    fun transferMoney(phone: String? = null, walletId: String? = null, amount: Double, note: String?) {
         val currentBalance = (uiState.value as? WalletUiState.Success)?.walletInfo?.balance ?: 0.0
         if (amount > currentBalance) {
             _transferStatus.value = TransferStatus.Error("Insufficient balance")
-            onComplete(false)
+            viewModelScope.launch { _uiEffect.emit(WalletUiEffect.ShowError("Insufficient balance")) }
             return
         }
 
@@ -142,17 +154,18 @@ class WalletViewModel @Inject constructor(
                 if (success) {
                     refresh()
                     _transferStatus.value = TransferStatus.Success
+                    _uiEffect.emit(WalletUiEffect.TransferSuccess)
                     notificationHelper.showNotification(
                         title = "Transfer Successful",
                         message = "You have successfully transferred $${String.format(Locale.US, "%.2f", amount)}."
                     )
                 } else {
                     _transferStatus.value = TransferStatus.Error("Transfer failed. Please try again.")
+                    _uiEffect.emit(WalletUiEffect.ShowError("Transfer failed"))
                 }
-                onComplete(success)
             } catch (e: Exception) {
                 _transferStatus.value = TransferStatus.Error(e.message ?: "An unexpected error occurred")
-                onComplete(false)
+                _uiEffect.emit(WalletUiEffect.ShowError(e.message ?: "An unexpected error occurred"))
             }
         }
     }
@@ -170,20 +183,28 @@ class WalletViewModel @Inject constructor(
 
 
     //skip for MVP
-    fun deposit(amount: Double, onComplete: (Boolean) -> Unit) {
+    fun deposit(amount: Double) {
         viewModelScope.launch {
             val success = repository.deposit(amount)
-            if (success) refresh()
-            onComplete(success)
+            if (success) {
+                refresh()
+                _uiEffect.emit(WalletUiEffect.DepositSuccess)
+            } else {
+                _uiEffect.emit(WalletUiEffect.ShowError("Deposit failed"))
+            }
         }
     }
 
     //skip for MVP
-    fun withdraw(amount: Double, onComplete: (Boolean) -> Unit) {
+    fun withdraw(amount: Double) {
         viewModelScope.launch {
             val success = repository.withdraw(amount)
-            if (success) refresh()
-            onComplete(success)
+            if (success) {
+                refresh()
+                _uiEffect.emit(WalletUiEffect.WithdrawSuccess)
+            } else {
+                _uiEffect.emit(WalletUiEffect.ShowError("Withdrawal failed"))
+            }
         }
     }
 }

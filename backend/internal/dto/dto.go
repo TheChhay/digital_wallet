@@ -159,7 +159,7 @@ type TransactionResponse struct {
 	IsPositive    *bool      `json:"is_positive,omitempty"`
 }
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────e
 // QR — Dynamic
 // ─────────────────────────────────────────────
 

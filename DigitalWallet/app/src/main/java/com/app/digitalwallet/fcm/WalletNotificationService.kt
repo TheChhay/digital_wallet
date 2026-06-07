@@ -11,7 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.app.digitalwallet.MainActivity
 import com.app.digitalwallet.R
 import com.app.digitalwallet.data.AuthRepository
-import com.app.digitalwallet.util.RefreshEventBus
+import com.app.digitalwallet.utils.RefreshEventBus
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint

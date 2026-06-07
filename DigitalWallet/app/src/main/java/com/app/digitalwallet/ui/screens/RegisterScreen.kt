@@ -34,6 +34,7 @@ import com.app.digitalwallet.ui.components.ZenTextField
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.digitalwallet.viewmodel.AuthViewModel
+import com.app.digitalwallet.viewmodel.AuthUiEffect
 
 @Composable
 fun RegisterScreen(
@@ -51,6 +52,17 @@ fun RegisterScreen(
     var validationError by remember { mutableStateOf<String?>(null) }
 
     val uiState = viewModel.registerUiState
+
+    // Handle UI effects (Side Effects)
+    LaunchedEffect(viewModel) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is AuthUiEffect.NavigateToHome -> onRegisterSuccess()
+                is AuthUiEffect.NavigateToRegister -> {} // Should not happen here
+                else -> {}
+            }
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -205,8 +217,7 @@ fun RegisterScreen(
                                         phone = phoneNumber,
                                         firstName = firstName,
                                         lastName = lastName,
-                                        password = password,
-                                        onRegisterSuccess = onRegisterSuccess
+                                        password = password
                                     )
                                 }
                             } else {

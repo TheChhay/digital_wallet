@@ -1,4 +1,4 @@
-package com.app.digitalwallet.util
+package com.app.digitalwallet.utils
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

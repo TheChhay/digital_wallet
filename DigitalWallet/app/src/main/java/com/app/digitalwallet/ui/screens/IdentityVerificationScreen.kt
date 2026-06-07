@@ -48,6 +48,7 @@ import com.app.digitalwallet.ui.components.PrimaryButton
 import com.app.digitalwallet.ui.components.ZenTextField
 import com.app.digitalwallet.viewmodel.KYCViewModel
 import com.app.digitalwallet.viewmodel.KycUiState
+import com.app.digitalwallet.viewmodel.KycUiEffect
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -131,9 +132,16 @@ fun IdentityVerificationScreen(
     }
 
     // Initial check for KYC status and navigation event
-    LaunchedEffect(Unit) {
+    LaunchedEffect(viewModel) {
         viewModel.getKYC()
-        viewModel.verificationSuccess.collect { onProceed() }
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is KycUiEffect.VerificationSuccess -> onProceed()
+                is KycUiEffect.ShowError -> {
+                    // Errors are already handled by showing errorMessage from uiState
+                }
+            }
+        }
     }
 
     val isLoading = uiState is KycUiState.Loading

@@ -30,6 +30,7 @@ import com.app.digitalwallet.ui.components.ZenTextField
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.digitalwallet.viewmodel.AuthViewModel
+import com.app.digitalwallet.viewmodel.AuthUiEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +44,17 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
 
     val uiState = viewModel.loginUiState
+
+    // Handle UI effects (Side Effects)
+    LaunchedEffect(viewModel) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is AuthUiEffect.NavigateToHome -> onLoginSuccess()
+                is AuthUiEffect.NavigateToRegister -> onNavigateToRegister()
+                else -> {} // Handle others if needed
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -142,7 +154,7 @@ fun LoginScreen(
                         text = if (uiState.isLoading) "Signing In..." else "Sign In",
                         onClick = {
                             if (phoneNumber.isNotBlank() && password.isNotBlank()) {
-                                viewModel.login(phoneNumber, password, onLoginSuccess)
+                                viewModel.login(phoneNumber, password)
                             }
                         },
                         enabled = !uiState.isLoading

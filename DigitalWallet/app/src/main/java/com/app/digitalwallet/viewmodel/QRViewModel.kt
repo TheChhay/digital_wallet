@@ -8,8 +8,10 @@ import com.app.digitalwallet.data.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,6 +23,11 @@ sealed class QRUiState {
     data class Error(val message: String) : QRUiState()
 }
 
+sealed class QRUiEffect {
+    object ValidationSuccess : QRUiEffect()
+    data class ShowError(val message: String) : QRUiEffect()
+}
+
 @HiltViewModel
 class QRViewModel @Inject constructor(
     private val repository: QRRepository
@@ -28,6 +35,9 @@ class QRViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<QRUiState>(QRUiState.Idle)
     val uiState: StateFlow<QRUiState> = _uiState.asStateFlow()
+
+    private val _uiEffect = MutableSharedFlow<QRUiEffect>()
+    val uiEffect = _uiEffect.asSharedFlow()
 
     private val _timerProgress = MutableStateFlow(1f)
     val timerProgress: StateFlow<Float> = _timerProgress.asStateFlow()
@@ -106,6 +116,7 @@ class QRViewModel @Inject constructor(
             if (response != null && response.isValid) {
                 _uiState.value = QRUiState.Success(response)
                 _pendingPayment.value = response
+                _uiEffect.emit(QRUiEffect.ValidationSuccess)
                 response
             } else {
                 _uiState.value = QRUiState.Error(response?.message ?: "Invalid token")
