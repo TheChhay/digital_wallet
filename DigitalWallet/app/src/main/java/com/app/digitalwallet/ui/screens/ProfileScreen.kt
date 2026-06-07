@@ -50,7 +50,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.FileOutputStream
 
-import com.app.digitalwallet.viewmodel.AuthUiEffect
+import com.app.digitalwallet.viewmodel.AuthUiEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,11 +67,11 @@ fun ProfileScreen(
     val userProfile = authViewModel.userProfile
     val userPhone = remember { TokenManager.getInstance(context).getUserPhone() ?: "User" }
 
-    // Handle UI effects
+    // Handle UI events
     LaunchedEffect(authViewModel) {
-        authViewModel.uiEffect.collect { effect ->
-            when (effect) {
-                is AuthUiEffect.ProfileUpdated -> {
+        authViewModel.uiEvent.collect { event ->
+            when (event) {
+                is AuthUiEvent.ProfileUpdated -> {
                     Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
                 }
                 else -> {}

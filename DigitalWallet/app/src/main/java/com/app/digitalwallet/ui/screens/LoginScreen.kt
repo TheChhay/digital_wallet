@@ -30,7 +30,7 @@ import com.app.digitalwallet.ui.components.ZenTextField
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.digitalwallet.viewmodel.AuthViewModel
-import com.app.digitalwallet.viewmodel.AuthUiEffect
+import com.app.digitalwallet.viewmodel.AuthUiEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,12 +45,12 @@ fun LoginScreen(
 
     val uiState = viewModel.loginUiState
 
-    // Handle UI effects (Side Effects)
+    // Handle UI events (Side Effects)
     LaunchedEffect(viewModel) {
-        viewModel.uiEffect.collect { effect ->
-            when (effect) {
-                is AuthUiEffect.NavigateToHome -> onLoginSuccess()
-                is AuthUiEffect.NavigateToRegister -> onNavigateToRegister()
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is AuthUiEvent.NavigateToHome -> onLoginSuccess()
+                is AuthUiEvent.NavigateToRegister -> onNavigateToRegister()
                 else -> {} // Handle others if needed
             }
         }

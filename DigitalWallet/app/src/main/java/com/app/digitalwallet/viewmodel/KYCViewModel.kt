@@ -29,9 +29,9 @@ sealed class KycUiState {
     data class Error(val message: String) : KycUiState()
 }
 
-sealed class KycUiEffect {
-    object VerificationSuccess : KycUiEffect()
-    data class ShowError(val message: String) : KycUiEffect()
+sealed class KycUiEvent {
+    object VerificationSuccess : KycUiEvent()
+    data class ShowError(val message: String) : KycUiEvent()
 }
 @HiltViewModel
 class KYCViewModel @Inject constructor(
@@ -46,9 +46,9 @@ class KYCViewModel @Inject constructor(
     var idCardUri by mutableStateOf<Uri?>(null)
     var selfieUri by mutableStateOf<Uri?>(null)
 
-    // ── UI Effects ──
-    private val _uiEffect = MutableSharedFlow<KycUiEffect>()
-    val uiEffect = _uiEffect.asSharedFlow()
+    // ── UI Events ──
+    private val _uiEvent = MutableSharedFlow<KycUiEvent>()
+    val uiEvent = _uiEvent.asSharedFlow()
 
     fun submitKYC() {
         // validation stays exactly the same
@@ -76,7 +76,7 @@ class KYCViewModel @Inject constructor(
                 val response = repository.submitKYC(fullName, dob, address, idPart, selfiePart)
 
                 if (response.success) {
-                    _uiEffect.emit(KycUiEffect.VerificationSuccess)
+                    _uiEvent.emit(KycUiEvent.VerificationSuccess)
                     kycUiState = KycUiState.Idle     // ← reset after success
                 } else {
                     kycUiState = KycUiState.Error(response.message ?: "Submission failed")

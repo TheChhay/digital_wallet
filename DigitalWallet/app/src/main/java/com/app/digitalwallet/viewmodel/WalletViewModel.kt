@@ -24,11 +24,11 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
-sealed class WalletUiEffect {
-    object TransferSuccess : WalletUiEffect()
-    object DepositSuccess : WalletUiEffect()
-    object WithdrawSuccess : WalletUiEffect()
-    data class ShowError(val message: String) : WalletUiEffect()
+sealed class WalletUiEvent {
+    object TransferSuccess : WalletUiEvent()
+    object DepositSuccess : WalletUiEvent()
+    object WithdrawSuccess : WalletUiEvent()
+    data class ShowError(val message: String) : WalletUiEvent()
 }
 
 @HiltViewModel
@@ -41,8 +41,8 @@ class WalletViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<WalletUiState>(WalletUiState.Loading)
     val uiState: StateFlow<WalletUiState> = _uiState.asStateFlow()
 
-    private val _uiEffect = MutableSharedFlow<WalletUiEffect>()
-    val uiEffect = _uiEffect.asSharedFlow()
+    private val _uiEvent = MutableSharedFlow<WalletUiEvent>()
+    val uiEvent = _uiEvent.asSharedFlow()
 
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
     val transactions: StateFlow<List<Transaction>> = _transactions.asStateFlow()
@@ -137,7 +137,7 @@ class WalletViewModel @Inject constructor(
         val currentBalance = (uiState.value as? WalletUiState.Success)?.walletInfo?.balance ?: 0.0
         if (amount > currentBalance) {
             _transferStatus.value = TransferStatus.Error("Insufficient balance")
-            viewModelScope.launch { _uiEffect.emit(WalletUiEffect.ShowError("Insufficient balance")) }
+            viewModelScope.launch { _uiEvent.emit(WalletUiEvent.ShowError("Insufficient balance")) }
             return
         }
 
@@ -154,18 +154,18 @@ class WalletViewModel @Inject constructor(
                 if (success) {
                     refresh()
                     _transferStatus.value = TransferStatus.Success
-                    _uiEffect.emit(WalletUiEffect.TransferSuccess)
+                    _uiEvent.emit(WalletUiEvent.TransferSuccess)
                     notificationHelper.showNotification(
                         title = "Transfer Successful",
                         message = "You have successfully transferred $${String.format(Locale.US, "%.2f", amount)}."
                     )
                 } else {
                     _transferStatus.value = TransferStatus.Error("Transfer failed. Please try again.")
-                    _uiEffect.emit(WalletUiEffect.ShowError("Transfer failed"))
+                    _uiEvent.emit(WalletUiEvent.ShowError("Transfer failed"))
                 }
             } catch (e: Exception) {
                 _transferStatus.value = TransferStatus.Error(e.message ?: "An unexpected error occurred")
-                _uiEffect.emit(WalletUiEffect.ShowError(e.message ?: "An unexpected error occurred"))
+                _uiEvent.emit(WalletUiEvent.ShowError(e.message ?: "An unexpected error occurred"))
             }
         }
     }
@@ -188,9 +188,9 @@ class WalletViewModel @Inject constructor(
             val success = repository.deposit(amount)
             if (success) {
                 refresh()
-                _uiEffect.emit(WalletUiEffect.DepositSuccess)
+                _uiEvent.emit(WalletUiEvent.DepositSuccess)
             } else {
-                _uiEffect.emit(WalletUiEffect.ShowError("Deposit failed"))
+                _uiEvent.emit(WalletUiEvent.ShowError("Deposit failed"))
             }
         }
     }
@@ -201,9 +201,9 @@ class WalletViewModel @Inject constructor(
             val success = repository.withdraw(amount)
             if (success) {
                 refresh()
-                _uiEffect.emit(WalletUiEffect.WithdrawSuccess)
+                _uiEvent.emit(WalletUiEvent.WithdrawSuccess)
             } else {
-                _uiEffect.emit(WalletUiEffect.ShowError("Withdrawal failed"))
+                _uiEvent.emit(WalletUiEvent.ShowError("Withdrawal failed"))
             }
         }
     }

@@ -42,7 +42,7 @@ import com.app.digitalwallet.viewmodel.WalletUiState
 import com.app.digitalwallet.viewmodel.WalletViewModel
 import java.util.Locale
 
-import com.app.digitalwallet.viewmodel.WalletUiEffect
+import com.app.digitalwallet.viewmodel.WalletUiEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,11 +86,11 @@ fun TransferScreen(
     val isFromQR = payment != null
     val hasRecipient = isFromQR || phoneNumber.isNotEmpty()
 
-    // Handle UI effects
+    // Handle UI events
     LaunchedEffect(viewModel) {
-        viewModel.uiEffect.collect { effect ->
-            when (effect) {
-                is WalletUiEffect.TransferSuccess -> {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is WalletUiEvent.TransferSuccess -> {
                     val displayName = when {
                         confirmedRecipientName.isNotEmpty() && confirmedRecipientName != "null null" -> confirmedRecipientName
                         isFromQR -> payment?.recipientName ?: "QR Recipient"
@@ -100,10 +100,10 @@ fun TransferScreen(
                     showConfirmDialog = false
                     onNavigateToSuccess(amount, displayName)
                 }
-                is WalletUiEffect.ShowError -> {
+                is WalletUiEvent.ShowError -> {
                     // Handled via transferStatus
                 }
-                else -> {} // Ignore other effects like DepositSuccess, WithdrawSuccess
+                else -> {} // Ignore other events like DepositSuccess, WithdrawSuccess
             }
         }
     }

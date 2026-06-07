@@ -20,11 +20,11 @@ import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 import javax.inject.Inject
 
-sealed class AuthUiEffect {
-    object NavigateToHome : AuthUiEffect()
-    object NavigateToRegister : AuthUiEffect()
-    object ProfileUpdated : AuthUiEffect()
-    data class ShowError(val message: String) : AuthUiEffect()
+sealed class AuthUiEvent {
+    object NavigateToHome : AuthUiEvent()
+    object NavigateToRegister : AuthUiEvent()
+    object ProfileUpdated : AuthUiEvent()
+    data class ShowError(val message: String) : AuthUiEvent()
 }
 
 @HiltViewModel
@@ -33,8 +33,8 @@ class AuthViewModel @Inject constructor(
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    private val _uiEffect = MutableSharedFlow<AuthUiEffect>()
-    val uiEffect = _uiEffect.asSharedFlow()
+    private val _uiEvent = MutableSharedFlow<AuthUiEvent>()
+    val uiEvent = _uiEvent.asSharedFlow()
 
     val logoutEvent = sessionManager.logoutEvent
 
@@ -95,7 +95,7 @@ class AuthViewModel @Inject constructor(
                 if (response.success && response.data != null) {
                     loginUiState = loginUiState.copy(isLoading = false)
                     syncFcmToken() // Sync token after successful login
-                    _uiEffect.emit(AuthUiEffect.NavigateToHome)
+                    _uiEvent.emit(AuthUiEvent.NavigateToHome)
                 } else {
                     loginUiState = loginUiState.copy(isLoading = false, error = response.message)
                 }
@@ -116,7 +116,7 @@ class AuthViewModel @Inject constructor(
                 val response = repository.register(RegisterRequest(normalizedPhone, password, firstName, lastName))
                 if (response.success) {
                     registerUiState = registerUiState.copy(isLoading = false)
-                    _uiEffect.emit(AuthUiEffect.NavigateToHome) // Or wherever you want after register
+                    _uiEvent.emit(AuthUiEvent.NavigateToHome) // Or wherever you want after register
                 } else {
                     registerUiState = registerUiState.copy(isLoading = false, error = response.message)
                 }
@@ -137,7 +137,7 @@ class AuthViewModel @Inject constructor(
                 if (response.success && response.data != null) {
                     userProfile = response.data
                     uploadProfileImageUiState = uploadProfileImageUiState.copy(isLoading = false)
-                    _uiEffect.emit(AuthUiEffect.ProfileUpdated)
+                    _uiEvent.emit(AuthUiEvent.ProfileUpdated)
                 } else {
                     uploadProfileImageUiState = uploadProfileImageUiState.copy(
                         isLoading = false,
@@ -161,7 +161,7 @@ class AuthViewModel @Inject constructor(
                 if (response.success && response.data != null) {
                     userProfile = response.data          // ✅ already UserResponse?, no cast needed
                     updateProfileUiState = updateProfileUiState.copy(isLoading = false)
-                    _uiEffect.emit(AuthUiEffect.ProfileUpdated)
+                    _uiEvent.emit(AuthUiEvent.ProfileUpdated)
                 } else {
                     updateProfileUiState = updateProfileUiState.copy(
                         isLoading = false,

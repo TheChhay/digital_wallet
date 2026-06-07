@@ -48,7 +48,7 @@ import com.app.digitalwallet.ui.components.PrimaryButton
 import com.app.digitalwallet.ui.components.ZenTextField
 import com.app.digitalwallet.viewmodel.KYCViewModel
 import com.app.digitalwallet.viewmodel.KycUiState
-import com.app.digitalwallet.viewmodel.KycUiEffect
+import com.app.digitalwallet.viewmodel.KycUiEvent
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -134,10 +134,10 @@ fun IdentityVerificationScreen(
     // Initial check for KYC status and navigation event
     LaunchedEffect(viewModel) {
         viewModel.getKYC()
-        viewModel.uiEffect.collect { effect ->
-            when (effect) {
-                is KycUiEffect.VerificationSuccess -> onProceed()
-                is KycUiEffect.ShowError -> {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is KycUiEvent.VerificationSuccess -> onProceed()
+                is KycUiEvent.ShowError -> {
                     // Errors are already handled by showing errorMessage from uiState
                 }
             }

@@ -34,7 +34,7 @@ import com.app.digitalwallet.ui.components.ZenTextField
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.app.digitalwallet.viewmodel.AuthViewModel
-import com.app.digitalwallet.viewmodel.AuthUiEffect
+import com.app.digitalwallet.viewmodel.AuthUiEvent
 
 @Composable
 fun RegisterScreen(
@@ -53,12 +53,12 @@ fun RegisterScreen(
 
     val uiState = viewModel.registerUiState
 
-    // Handle UI effects (Side Effects)
+    // Handle UI events (Side Effects)
     LaunchedEffect(viewModel) {
-        viewModel.uiEffect.collect { effect ->
-            when (effect) {
-                is AuthUiEffect.NavigateToHome -> onRegisterSuccess()
-                is AuthUiEffect.NavigateToRegister -> {} // Should not happen here
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is AuthUiEvent.NavigateToHome -> onRegisterSuccess()
+                is AuthUiEvent.NavigateToRegister -> {} // Should not happen here
                 else -> {}
             }
         }
