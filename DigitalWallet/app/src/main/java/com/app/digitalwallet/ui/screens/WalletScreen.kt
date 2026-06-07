@@ -83,8 +83,6 @@ fun WalletScreen(
                         .padding(innerPadding)
                         .padding(horizontal = 20.dp)
                 ) {
-                    item { Spacer(modifier = Modifier.height(16.dp)) }
-                    
                     item {
                         CardSection(state.walletInfo.balance)
                     }
