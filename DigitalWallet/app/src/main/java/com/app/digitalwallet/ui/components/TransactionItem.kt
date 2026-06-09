@@ -14,8 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.app.digitalwallet.data.Transaction
-import com.app.digitalwallet.data.TransactionStatus
+import com.app.digitalwallet.domain.model.Transaction
+import com.app.digitalwallet.domain.model.TransactionStatus
 import java.util.Locale
 
 @Composable

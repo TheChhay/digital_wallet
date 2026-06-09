@@ -6,15 +6,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.app.digitalwallet.navigation.MainNavGraph
-import com.app.digitalwallet.navigation.Screen
+import com.app.digitalwallet.ui.navigation.MainNavGraph
+import com.app.digitalwallet.ui.navigation.Screen
 import com.app.digitalwallet.ui.theme.DigitalWalletTheme
 import dagger.hilt.android.AndroidEntryPoint
 

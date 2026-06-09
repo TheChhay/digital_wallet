@@ -19,9 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-import com.app.digitalwallet.auth.TokenManager
+import com.app.digitalwallet.core.session.TokenManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SplashScreen(onNavigateToHome: () -> Unit, onNavigateToLogin: () -> Unit) {
@@ -30,7 +31,7 @@ fun SplashScreen(onNavigateToHome: () -> Unit, onNavigateToLogin: () -> Unit) {
 
     // Navigate to Home or Login after a delay
     LaunchedEffect(key1 = true) {
-        delay(2500) // 2.5 seconds splash
+        delay(2500.milliseconds) // 2.5 seconds splash
         if (tokenManager.getAccessToken() != null) {
             onNavigateToHome()
         } else {
